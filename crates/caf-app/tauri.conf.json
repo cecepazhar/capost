@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CAPost",
+  "version": "0.1.0-dev",
+  "identifier": "com.fathforce.capost",
+  "build": {
+    "frontendDist": "../../frontend/build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CAPost",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 360,
+        "minHeight": 500,
+        "maximized": false,
+        "decorations": false,
+				"create": false,
+				"additionalBrowserArgs": "--renderer-process-limit=1 --disable-features=Translate,OptimizationHints,MediaRouter --disable-gpu-shader-disk-cache --disk-cache-size=16777216"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ipc: http://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "icons/header.bmp",
+        "sidebarImage": "icons/sidebar.bmp"
+      }
+    },
+    "createUpdaterArtifacts": true
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEZBMzQwQzgyQ0ExNjREOApSV1RZWktFc3lFQ2pEMThrQ21uS0p0Vm40cW1NMmxWa3EvUHA0TkpCQVYzc2JtWk5QVndTQkd2cgo=",
+      "endpoints": [
+        "https://example.com/api/releases/capost/latest.json",
+        "https://github.com/cecepazhar/capost/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  }
+}
