@@ -94,12 +94,12 @@
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label for="step1-app-name" class="block text-xs font-semibold text-[var(--ca-text-secondary)] mb-1">Application Name</label>
-            <Input id="step1-app-name" bind:value={appName} placeholder={'e.g. CATerminal'} />
+            <Input id="step1-app-name" bind:value={appName} placeholder={'e.g. CAPost Example'} />
           </div>
 
           <div>
             <label for="step1-app-slug" class="block text-xs font-semibold text-[var(--ca-text-secondary)] mb-1">Bundle Slug</label>
-            <Input id="step1-app-slug" bind:value={appSlug} placeholder={'com.fathforce.caterm'} />
+            <Input id="step1-app-slug" bind:value={appSlug} placeholder={'com.fathforce.capost'} />
           </div>
         </div>
 

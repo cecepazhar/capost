@@ -27,12 +27,12 @@
 
   const projects: ProjectCard[] = [
     {
-      id: 'proj-caterm',
-      title: 'CATerm',
-      description: 'Sovereign SSH/SFTP terminal client with zero-knowledge encrypted vault and Hana AI.',
-      category: 'Terminal',
+      id: 'proj-capost',
+      title: 'CAPost',
+      description: 'Zero-Knowledge AI-Native API Studio & Workbench for modern backend and QA engineers.',
+      category: 'API Studio',
       status: 'STABLE',
-      accent: '#ef4444',
+      accent: '#f59e0b',
       stars: 48,
       members: [{ name: 'Cecep' }, { name: 'Harun' }, { name: 'Fatih' }],
       totpCode: '492 108'

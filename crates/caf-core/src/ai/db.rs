@@ -809,7 +809,7 @@ mod tests {
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_nanos();
-            Self(std::env::temp_dir().join(format!("caterm_ai_db_{name}_{nanos:x}")))
+            Self(std::env::temp_dir().join(format!("capost_ai_db_{name}_{nanos:x}")))
         }
     }
     impl Drop for TempDb {

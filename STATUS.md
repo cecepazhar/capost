@@ -25,7 +25,7 @@
 | | Mobile Deployment | Ready | Android packaging and build guides verified |
 
 ## 2. Immediate Next Steps
-- [x] Complete porting of master AI routing and memory architecture from CATerm.
+- [x] Complete porting of master AI routing and memory architecture from CAFramework.
 - [x] Unify mobile bottom sheet layout and ambient glow design tokens.
 - [x] Synchronize GCC Pro licensing flow and offline tolerance guards.
 - [ ] Publish comprehensive CAPost developer documentation and starter templates.

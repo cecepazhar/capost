@@ -16,14 +16,14 @@ pub struct ProStatus {
 /// Aligned with production GCC signing key.
 pub fn public_key(version: u32) -> Option<VerifyingKey> {
     let compiled = match version {
-        1 => option_env!("CATERM_PRO_LICENSE_PUBKEY_V1").or(Some(
+        1 => option_env!("CAPOST_PRO_LICENSE_PUBKEY_V1").or(Some(
             "4aed277ac7b92ee58778d3c5233ebda741c652c753e3dae7127f367dbb58d92f",
         )),
-        2 => option_env!("CATERM_PRO_LICENSE_PUBKEY_V2"),
+        2 => option_env!("CAPOST_PRO_LICENSE_PUBKEY_V2"),
         _ => None,
     };
     #[cfg(debug_assertions)]
-    let runtime = std::env::var("CATERM_PRO_LICENSE_PUBKEY").ok();
+    let runtime = std::env::var("CAPOST_PRO_LICENSE_PUBKEY").ok();
     #[cfg(not(debug_assertions))]
     let runtime: Option<String> = None;
 

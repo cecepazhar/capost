@@ -1,5 +1,5 @@
 //! Multi-Provider AI Dispatcher with Automatic Fallback Chain.
-//! Supports Anthropic, OpenAI-compatible, Ollama, and CATerm Pro Hosted AI.
+//! Supports Anthropic, OpenAI-compatible, Ollama, and Hosted AI.
 
 use super::context_builder::ContextBuilder;
 use super::db::{get_provider, get_route_rule};
@@ -174,8 +174,8 @@ impl<'a> Dispatcher<'a> {
                 max_tokens,
                 timeout,
             ),
-            ProviderType::CatermHosted => {
-                Self::call_caterm_hosted(model, system_prompt, user_prompt, temperature, max_tokens)
+            ProviderType::Hosted => {
+                Self::call_hosted(model, system_prompt, user_prompt, temperature, max_tokens)
             }
         }
     }
@@ -401,7 +401,7 @@ impl<'a> Dispatcher<'a> {
         Ok(content.to_string())
     }
 
-    fn call_caterm_hosted(
+    fn call_hosted(
         model: &str,
         system_prompt: &str,
         user_prompt: &str,

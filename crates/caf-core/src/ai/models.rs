@@ -41,7 +41,7 @@ impl TaskType {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "snake_case")]
 pub enum ProviderType {
-    CatermHosted,
+    Hosted,
     Anthropic,
     OpenaiCompatible,
     Ollama,
@@ -51,7 +51,7 @@ impl ProviderType {
     /// # Infallible: static string representation
     pub fn as_str(&self) -> &'static str {
         match self {
-            Self::CatermHosted => "caterm_hosted",
+            Self::Hosted => "hosted",
             Self::Anthropic => "anthropic",
             Self::OpenaiCompatible => "openai_compatible",
             Self::Ollama => "ollama",
@@ -61,7 +61,7 @@ impl ProviderType {
     /// # Infallible: static string parser
     pub fn from_str_opt(s: &str) -> Option<Self> {
         match s {
-            "caterm_hosted" => Some(Self::CatermHosted),
+            "hosted" => Some(Self::Hosted),
             "anthropic" => Some(Self::Anthropic),
             "openai_compatible" => Some(Self::OpenaiCompatible),
             "ollama" => Some(Self::Ollama),
