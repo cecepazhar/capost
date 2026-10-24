@@ -64,6 +64,12 @@ const id: Dictionary = {
     settings: 'Pengaturan',
     contribution: 'Dukungan & Kontribusi',
     dashboard: 'Dasbor',
+    requests: 'Permintaan',
+    collections: 'Koleksi',
+    environments: 'Lingkungan',
+    runner: 'Runner',
+    mock: 'Server Mock',
+    history: 'Riwayat',
     table: 'Tabel',
     form: 'Formulir',
     cards: 'Kartu',
@@ -353,9 +359,9 @@ const id: Dictionary = {
     directDonation: 'Donasi Langsung',
     heading: 'Bantu CAPost Tetap Independen, Cepat, dan Gratis untuk Semua Developer',
     body: 'CAPost ditulis dengan Rust dan Svelte, berlisensi MIT, tanpa telemetri. Fitur inti — klien API, environment, vault lokal, collection runner, dan AI dengan API key sendiri — gratis selamanya; Pro hanya untuk fitur yang berjalan di server kami (Cloud Sync dan AI hosted). Dukungan Anda membiayai server, build lintas platform, dan waktu untuk terus merilis pembaruan.',
-    donateVia: 'Dukung di Ko-fi',
-    donatePaypal: 'Atau donasi sekali via PayPal',
-    copyUrl: 'Salin URL Ko-fi',
+    donateVia: 'Checkout Creem',
+    donatePaypal: 'Atau beli via Creem',
+    copyUrl: 'Salin URL Creem',
     copiedLink: '✓ Tautan Tersalin',
     otherWays: 'Cara Lain Berkontribusi',
     starTitle: 'Beri Star di GitHub',
@@ -369,7 +375,7 @@ const id: Dictionary = {
   },
   sponsorWall: {
     title: 'Sponsor',
-    subtitle: 'Pendukung bulanan di Ko-fi atau GitHub Sponsors mendapat nama atau logo di README, website, dan halaman ini.',
+    subtitle: 'Pendukung di Creem atau GitHub Sponsors mendapat nama atau logo di README, website, dan halaman ini.',
     tierPlatinum: 'Platinum',
     tierGold: 'Gold',
     tierSilver: 'Silver',
@@ -377,7 +383,7 @@ const id: Dictionary = {
     minAmount: '${{amount}}+/bln',
     anyAmount: 'Berapa saja',
     emptyTier: 'Belum ada sponsor di tingkat ini — jadilah yang pertama!',
-    cta: 'Jadi Sponsor di Ko-fi',
+    cta: 'Dukung di Creem',
     ctaGithub: 'atau lewat GitHub Sponsors'
   },
   vpsRecommendation: {
@@ -944,7 +950,7 @@ const id: Dictionary = {
       subscribe: 'Berlangganan',
       trialNote: 'Trial tanpa kartu kredit. Kuota AI dipakai bersama oleh semua anggota akun.',
       supportTitle: 'Dukung Pengembangan Terbuka Independen',
-      supportBody: 'Inti CAPost gratis dan open source. Dukungan di Ko-fi menjaga pengembangan tetap aktif.'
+      supportBody: 'Inti CAPost gratis dan open source. Checkout Creem mengaktifkan fitur Pro sovereign dan mendukung pengembangan.'
     },
     security: {
       title: 'Konfigurasi Vault Zero-Knowledge',

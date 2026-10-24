@@ -1,6 +1,5 @@
 // CAPost Pro pricing as shown in the app. The real prices and the new-customer discount live in
-// Lemon Squeezy (capost-pricing-tiers-v1.md §1.1 and §3) — these numbers are display only and
-// must be changed together with the Lemon Squeezy variants, never on their own.
+// Creem — these numbers are display only and must be changed together with the Creem checkout plans, never on their own.
 export const PRO_PRICING = {
   monthly: { list: 10, intro: 6 },
   yearly: { list: 108, intro: 64.8 },

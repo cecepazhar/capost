@@ -63,6 +63,12 @@ const en = {
     settings: 'Settings',
     contribution: 'Support & Contribution',
     dashboard: 'Dashboard',
+    requests: 'Requests',
+    collections: 'Collections',
+    environments: 'Environments',
+    runner: 'Runner',
+    mock: 'Mock Server',
+    history: 'History',
     table: 'Table',
     form: 'Form',
     cards: 'Cards',
@@ -352,9 +358,9 @@ const en = {
     directDonation: 'Direct Donation',
     heading: 'Help Keep CAPost Independent, Fast, and Free for Every Developer',
     body: 'CAPost is written in Rust and Svelte, MIT-licensed, with no telemetry. The core — API client, environments, local vault, collection runner, and AI with your own key — stays free forever; Pro only covers features that run on our servers (Cloud Sync and hosted AI). Your support pays for servers, cross-platform builds, and the hours to keep shipping updates.',
-    donateVia: 'Support on Ko-fi',
-    donatePaypal: 'Or donate once via PayPal',
-    copyUrl: 'Copy Ko-fi URL',
+    donateVia: 'Creem Checkout',
+    donatePaypal: 'Or purchase via Creem',
+    copyUrl: 'Copy Creem URL',
     copiedLink: '✓ Copied Link',
     otherWays: 'Other Ways to Contribute',
     starTitle: 'Star on GitHub',
@@ -368,7 +374,7 @@ const en = {
   },
   sponsorWall: {
     title: 'Sponsors',
-    subtitle: 'Monthly supporters on Ko-fi or GitHub Sponsors get their name or logo on CAPost’s README, website, and this page.',
+    subtitle: 'Monthly supporters on Creem or GitHub Sponsors get their name or logo on CAPost’s README, website, and this page.',
     tierPlatinum: 'Platinum',
     tierGold: 'Gold',
     tierSilver: 'Silver',
@@ -376,7 +382,7 @@ const en = {
     minAmount: '${{amount}}+/mo',
     anyAmount: 'Any amount',
     emptyTier: 'No sponsors in this tier yet — be the first!',
-    cta: 'Become a Sponsor on Ko-fi',
+    cta: 'Become a Sponsor on Creem',
     ctaGithub: 'or via GitHub Sponsors'
   },
   vpsRecommendation: {
@@ -943,7 +949,7 @@ const en = {
       subscribe: 'Subscribe',
       trialNote: 'No credit card needed for the trial. The AI quota is shared by everyone on the account.',
       supportTitle: 'Support Independent Open Development',
-      supportBody: 'CAPost’s core is free and open source. Support on Ko-fi keeps development active.'
+      supportBody: 'CAPost’s core is free and open source. Creem checkout unlocks sovereign Pro features and supports development.'
     },
     security: {
       title: 'Zero-Knowledge Vault Configuration',

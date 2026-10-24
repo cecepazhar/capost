@@ -11,7 +11,7 @@
   import { getProfile, saveProfile } from '$lib/stores/profile.svelte';
   import { getAppearance, setReduceMotion } from '$lib/stores/appearance.svelte';
   import { getUpdater, checkForUpdates, installUpdate } from '$lib/stores/updater.svelte';
-  import { APP_VERSION, releaseNotesUrl, pricingUrl, KOFI_URL } from '$lib/appInfo';
+  import { APP_VERSION, releaseNotesUrl, pricingUrl, PRICING_URL } from '$lib/appInfo';
   import { PRO_PRICING, formatUsd, type BillingInterval } from '$lib/pro/pricing';
   import { openExternalUrl } from '$lib/utils/url';
   import { errorText } from '$lib/errors';
@@ -775,14 +775,14 @@
           <p class="text-xs text-neutral-800 dark:text-neutral-300 font-medium">{t('settings.subscription.supportTitle')}</p>
           <p class="text-[11px] text-neutral-500">{t('settings.subscription.supportBody')}</p>
         </div>
-        <a
-          href={KOFI_URL}
-          target="_blank"
-          rel="noopener"
-          class="inline-flex items-center gap-2 px-4 py-2 bg-[#ff5e5b] hover:bg-[#e54d4a] text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
+        <button
+          type="button"
+          onclick={() => openExternalUrl(pricingUrl(pro.status?.account?.id))}
+          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
         >
-          <span>{t('contribution.donateVia')}</span>
-        </a>
+          <span>Creem Checkout</span>
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+        </button>
       </div>
     </div>
   {:else if activeTab === 'security'}
