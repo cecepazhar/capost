@@ -1,10 +1,14 @@
 <script lang="ts">
-  export let size: number | string = 28;
-  export let mode: 'light' | 'dark' | 'auto' | 'brand' | 'white' = 'brand';
-  export let className: string = '';
+  interface Props {
+    size?: number | string;
+    mode?: 'light' | 'dark' | 'auto' | 'brand' | 'white';
+    className?: string;
+  }
 
-  $: polygonStroke = mode === 'white' ? '#FFFFFF' : '#6366F1';
-  $: spineStroke = mode === 'light' ? '#0A0A0C' : '#FFFFFF';
+  let { size = 28, mode = 'brand', className = '' }: Props = $props();
+
+  const polygonStroke = $derived(mode === 'white' ? '#FFFFFF' : '#6366F1');
+  const spineStroke = $derived(mode === 'light' ? '#0A0A0C' : '#FFFFFF');
 </script>
 
 <svg
@@ -15,7 +19,7 @@
   fill="none"
   xmlns="http://www.w3.org/2000/svg"
 >
-  <!-- CAPost Cyberpunk Monoline Wireframe Post Arrow -->
+  <!-- Cyberpunk Monoline Wireframe / Tech-Brutalist Post-Arrow -->
   <polygon
     points="256,105 412,385 256,315 100,385"
     fill="none"

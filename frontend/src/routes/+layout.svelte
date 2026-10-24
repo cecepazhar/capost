@@ -35,7 +35,7 @@
   import ProGateModal from '$lib/components/ProGateModal.svelte';
 
   let isCollapsed = $state(false);
-  let isVaultUnlocked = $state(typeof window !== 'undefined' && !Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__));
+  let isVaultUnlocked = $state(true); // Default open tanpa lockscreen per CA Group standard
   let mobileDrawerOpen = $state(false);
   let allMenusSheetOpen = $state(false);
   let pendingCrashReport = $state<ScrubbedCrashReport | null>(null);
@@ -80,19 +80,8 @@
   onMount(() => {
     initTheme();
     void billingStore.refresh();
-    const isTauri = typeof window !== 'undefined' && Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
-    if (!isTauri) {
-      isVaultUnlocked = true;
-    } else {
-      invoke<boolean>('is_vault_unlocked')
-        .then((unlocked) => {
-          isVaultUnlocked = unlocked;
-        })
-        .catch((err) => {
-          console.warn('is_vault_unlocked failed or not registered:', err);
-          isVaultUnlocked = false;
-        });
-    }
+    // Default open tanpa lockscreen per CA Group standard.
+    isVaultUnlocked = true;
 
     getPendingCrashReport()
       .then((report) => {
