@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-billing-start-trial"
+description = "Enables the billing_start_trial command without any pre-configured scope."
+commands.allow = ["billing_start_trial"]
+
+[[permission]]
+identifier = "deny-billing-start-trial"
+description = "Denies the billing_start_trial command without any pre-configured scope."
+commands.deny = ["billing_start_trial"]

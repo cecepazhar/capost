@@ -5,7 +5,7 @@ export const APP_CONFIG = {
   slug: "capost",
   bundleId: "com.fathforce.capost",
   version: "0.1.0",
-  accentColor: "amber",
+  accentColor: "indigo",
   errorPrefix: "CAPOST",
   description: "Zero-Knowledge AI-Native API Studio & Workbench for modern backend and QA engineers",
   window: {

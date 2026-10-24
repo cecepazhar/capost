@@ -14,11 +14,16 @@ pub enum EffectiveTier {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub struct EffectiveState {
     pub tier: EffectiveTier,
+    #[serde(alias = "billing_type")]
     pub billing_type: String,
+    #[serde(alias = "is_pro")]
     pub is_pro: bool,
+    #[serde(alias = "expires_at")]
     pub expires_at: Option<String>,
+    #[serde(alias = "grace_until")]
     pub grace_until: Option<String>,
     pub warning: Option<String>,
 }

@@ -31,6 +31,7 @@ once_cell = "1.21.4"
 chrono = "0.4.45"
 regex = "1.13.1"
 uuid = { version = "1.26.1", features = ["v4", "v7"] }
+reqwest = { version = "0.13", default-features = false, features = ["json", "multipart", "stream", "rustls", "query", "form"] }
 ureq = { version = "3.1", features = ["json"] }
 hmac = "0.12"
 md-5 = "0.10"

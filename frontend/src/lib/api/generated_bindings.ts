@@ -181,3 +181,47 @@ export async function invoke_setPerformancePrefs(prefs: any): Promise<any> {
   return invoke('set_performance_prefs', { prefs: prefs });
 }
 
+export async function invoke_httpExecuteRequest(payload: any): Promise<any> {
+  return invoke('http_execute_request', { payload: payload });
+}
+
+export async function invoke_httpSendRequest(payload: any): Promise<any> {
+  return invoke('http_send_request', { payload: payload });
+}
+
+export async function invoke_listRequests(collectionId: string | null): Promise<any[]> {
+  return invoke('list_requests', { collection_id: collectionId });
+}
+
+export async function invoke_saveRequest(input: any): Promise<any> {
+  return invoke('save_request', { input: input });
+}
+
+export async function invoke_deleteRequest(id: string): Promise<any> {
+  return invoke('delete_request', { id: id });
+}
+
+export async function invoke_listCollections(): Promise<any[]> {
+  return invoke('list_collections');
+}
+
+export async function invoke_saveCollection(input: any): Promise<any> {
+  return invoke('save_collection', { input: input });
+}
+
+export async function invoke_listHistory(limit: number | null): Promise<any[]> {
+  return invoke('list_history', { limit: limit });
+}
+
+export async function invoke_clearHistory(): Promise<any> {
+  return invoke('clear_history');
+}
+
+export async function invoke_listEnvironments(): Promise<any[]> {
+  return invoke('list_environments');
+}
+
+export async function invoke_saveEnvironment(input: any): Promise<any> {
+  return invoke('save_environment', { input: input });
+}
+

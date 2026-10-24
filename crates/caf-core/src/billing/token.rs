@@ -35,14 +35,16 @@ pub fn verify_and_parse_token(
     expected_device_id: &str,
 ) -> Result<EntitlementPayload, CafError> {
     let parts: Vec<&str> = token.split('.').collect();
-    if parts.len() != 3 {
+    let (Some(header_part), Some(payload_part), Some(sig_part)) =
+        (parts.first().copied(), parts.get(1).copied(), parts.get(2).copied())
+    else {
         return Err(CafError::Vault(VaultError::Generic(
             "invalid token format: must be compact JWS with 3 parts".into(),
         )));
-    }
+    };
 
     let header_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(parts[0])
+        .decode(header_part)
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid header base64: {e}"))))?;
     let header: JwsHeader = serde_json::from_slice(&header_bytes)
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid header JSON: {e}"))))?;
@@ -80,7 +82,7 @@ pub fn verify_and_parse_token(
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid verifying key: {e}"))))?;
 
     let sig_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(parts[2])
+        .decode(sig_part)
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid signature base64: {e}"))))?;
 
     if sig_bytes.len() != 64 {
@@ -93,7 +95,7 @@ pub fn verify_and_parse_token(
     sig_arr.copy_from_slice(&sig_bytes);
     let signature = Signature::from_bytes(&sig_arr);
 
-    let signing_input = format!("{}.{}", parts[0], parts[1]);
+    let signing_input = format!("{header_part}.{payload_part}");
     verifying_key
         .verify_strict(signing_input.as_bytes(), &signature)
         .map_err(|_| {
@@ -101,7 +103,7 @@ pub fn verify_and_parse_token(
         })?;
 
     let payload_bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(parts[1])
+        .decode(payload_part)
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid payload base64: {e}"))))?;
     let payload: EntitlementPayload = serde_json::from_slice(&payload_bytes)
         .map_err(|e| CafError::Vault(VaultError::Generic(format!("invalid payload JSON: {e}"))))?;

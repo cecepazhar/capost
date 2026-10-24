@@ -30,9 +30,12 @@
   import AllMenusSheet from '$lib/components/AllMenusSheet.svelte';
   import { getAmbientStore } from '$lib/stores/ambient.svelte';
   import { getPro } from '$lib/stores/pro.svelte';
+  import { billingStore, isPro } from '$lib/stores/billing.svelte';
+  import { proGate } from '$lib/stores/proGate.svelte';
+  import ProGateModal from '$lib/components/ProGateModal.svelte';
 
   let isCollapsed = $state(false);
-  let isVaultUnlocked = $state(false);
+  let isVaultUnlocked = $state(typeof window !== 'undefined' && !Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__));
   let mobileDrawerOpen = $state(false);
   let allMenusSheetOpen = $state(false);
   let pendingCrashReport = $state<ScrubbedCrashReport | null>(null);
@@ -76,13 +79,20 @@
 
   onMount(() => {
     initTheme();
-    invoke<boolean>('is_vault_unlocked')
-      .then((unlocked) => {
-        isVaultUnlocked = unlocked;
-      })
-      .catch(() => {
-        isVaultUnlocked = false;
-      });
+    void billingStore.refresh();
+    const isTauri = typeof window !== 'undefined' && Boolean((window as any).__TAURI_INTERNALS__ || (window as any).__TAURI__);
+    if (!isTauri) {
+      isVaultUnlocked = true;
+    } else {
+      invoke<boolean>('is_vault_unlocked')
+        .then((unlocked) => {
+          isVaultUnlocked = unlocked;
+        })
+        .catch((err) => {
+          console.warn('is_vault_unlocked failed or not registered:', err);
+          isVaultUnlocked = false;
+        });
+    }
 
     getPendingCrashReport()
       .then((report) => {
@@ -103,6 +113,13 @@
   }
 
   function handleAiToggle() {
+    if (!$isPro) {
+      proGate.open(
+        'AI Copilot',
+        'Fitur AI memerlukan lisensi CAPost PRO. Pro member dapat menggunakan API Key sendiri (BYOK - OpenAI, Claude, Gemini, DeepSeek, Ollama) tanpa batas.'
+      );
+      return;
+    }
     toggleAiChat();
   }
 
@@ -203,7 +220,35 @@
           onToggleAi={handleAiToggle}
         />
 
-        <!-- 4. Notification Bell -->
+        <!-- 4. CAPost PRO / FREE Status Badge -->
+        {#if $isPro}
+          <button
+            type="button"
+            class="no-drag px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 shadow-[0_0_14px_rgba(16,185,129,0.35)] hover:bg-emerald-500/20 transition-all cursor-default flex items-center gap-1.5"
+            title="CAPost PRO Lisensi Aktif (BYOK AI, Cloud Sync &amp; Unlimited Runner)"
+          >
+            <span class="text-emerald-500 drop-shadow-[0_0_3px_rgba(16,185,129,0.6)]">★</span>
+            <span>PRO</span>
+          </button>
+        {:else}
+          <button
+            type="button"
+            onclick={() =>
+              proGate.open(
+                'Upgrade Account',
+                'Fitur AI memerlukan lisensi CAPost PRO. Pro member dapat menggunakan API Key sendiri (BYOK - OpenAI, Claude, Gemini, DeepSeek, Ollama) tanpa batas.'
+              )}
+            class="no-drag px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-[0_0_14px_rgba(99,102,241,0.3)] transition-all cursor-pointer flex items-center gap-1.5"
+            title="Upgrade ke CAPost PRO"
+          >
+            <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m1.5-4.548l-4.286 4.285a2.25 2.25 0 01-1.5 0.625c-1.343.462-2.87 0-3.722-1.25l-1.5-2.25a2.25 2.25 0 011.5-3.523l4.286-2.143c.68-.34 1.462-.34 2.143 0l3.75 1.875c.963.481 1.587 1.462 1.5 2.625Z" />
+            </svg>
+            <span>FREE - Upgrade</span>
+          </button>
+        {/if}
+
+        <!-- 5. Notification Bell -->
         <button
           type="button"
           onclick={() => showToast('Tidak ada notifikasi baru', 'info')}
@@ -216,12 +261,15 @@
           </svg>
         </button>
 
-        <!-- 5. Window Controls -->
+        <!-- 6. Window Controls -->
         <div class="pl-1 border-l border-neutral-200 dark:border-neutral-800">
           <WindowControls />
         </div>
       </div>
     </header>
+
+    <!-- Pro Activation Wizard / Gate Modal (globally accessible) -->
+    <ProGateModal />
 
     <!-- App Body: Seamless Sidebar + Raised Main Content Panel -->
     <div class="flex-1 flex overflow-hidden">

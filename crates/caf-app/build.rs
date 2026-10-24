@@ -61,6 +61,26 @@ const COMMANDS: &[&str] = &[
     // Preferences
     "get_performance_prefs",
     "set_performance_prefs",
+    // HTTP Workbench
+    "http_execute_request",
+    // HTTP Engine & Domain Storage
+    "http_send_request",
+    "list_requests",
+    "save_request",
+    "delete_request",
+    "list_collections",
+    "save_collection",
+    "list_history",
+    "clear_history",
+    "list_environments",
+    "save_environment",
+    // Billing & Licensing
+    "billing_get_state",
+    "billing_get_effective_state",
+    "billing_activate_license",
+    "billing_start_trial",
+    "billing_sign_out",
+    "open_external_url",
 ];
 
 fn main() {

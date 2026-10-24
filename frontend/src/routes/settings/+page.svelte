@@ -25,6 +25,8 @@
   import { SHORTCUT_GROUPS } from '$lib/shortcuts';
   import PageHeader from '$lib/components/PageHeader.svelte';
   import AmbientSettingsCard from '$lib/components/AmbientSettingsCard.svelte';
+  import { isPro } from '$lib/stores/billing.svelte';
+  import { proGate } from '$lib/stores/proGate.svelte';
 
   // Shared surface classes so every tab reads the same in light and dark mode.
   const CARD = 'bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-lg p-6 shadow-sm dark:shadow-none text-neutral-900 dark:text-white';
@@ -533,7 +535,31 @@
         <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">{t('settings.ai.title')}</h2>
         <p class="{MUTED} text-sm">{t('settings.ai.subtitle')}</p>
       </div>
-      <AiSettingsForm />
+
+      {#if !$isPro}
+        <div class="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30 flex flex-col sm:flex-row items-center justify-between gap-3">
+          <div class="flex-1 space-y-1 text-xs text-amber-700 dark:text-amber-400">
+            <span class="font-bold block text-sm">★ CAPost PRO Diperlukan untuk Fitur AI</span>
+            <p class="leading-relaxed">
+              Fitur AI memerlukan lisensi CAPost PRO. Pro member dapat menggunakan API Key sendiri
+              (BYOK - OpenAI, Claude, Gemini, DeepSeek, Ollama) tanpa batas.
+            </p>
+          </div>
+          <button
+            type="button"
+            onclick={() =>
+              proGate.open(
+                'Pengaturan AI &amp; BYOK',
+                'Fitur AI memerlukan lisensi CAPost PRO. Pro member dapat menggunakan API Key sendiri (BYOK - OpenAI, Claude, Gemini, DeepSeek, Ollama) tanpa batas.'
+              )}
+            class="px-4 py-2 rounded-lg text-xs font-bold text-white bg-amber-600 hover:bg-amber-500 transition-colors cursor-pointer shrink-0 shadow-sm"
+          >
+            Upgrade ke PRO
+          </button>
+        </div>
+      {:else}
+        <AiSettingsForm />
+      {/if}
     </div>
   {:else if activeTab === 'subscription'}
     <div class="{CARD} space-y-6">

@@ -154,6 +154,23 @@ pub fn run_with_start(start: std::time::Instant) {
             commands::import_encrypted_backup,
             commands::get_performance_prefs,
             commands::set_performance_prefs,
+            commands::http_execute_request,
+            commands::http_send_request,
+            commands::list_requests,
+            commands::save_request,
+            commands::delete_request,
+            commands::list_collections,
+            commands::save_collection,
+            commands::list_history,
+            commands::clear_history,
+            commands::list_environments,
+            commands::save_environment,
+            commands::billing_get_state,
+            commands::billing_get_effective_state,
+            commands::billing_activate_license,
+            commands::billing_start_trial,
+            commands::billing_sign_out,
+            commands::open_external_url,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

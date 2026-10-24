@@ -225,10 +225,12 @@
       }
       if (isSetup) {
         saveProfile({ name: setupName, avatar: setupAvatar });
+        isSetup = false;
         showToast(t('lock.created'), 'success');
       } else {
         showToast(t('lock.unlocked'), 'success');
       }
+      await new Promise((r) => setTimeout(r, 100));
       onUnlocked();
     } catch (err: any) {
       if (!isSetup) {

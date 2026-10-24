@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-http-execute-request"
+description = "Enables the http_execute_request command without any pre-configured scope."
+commands.allow = ["http_execute_request"]
+
+[[permission]]
+identifier = "deny-http-execute-request"
+description = "Denies the http_execute_request command without any pre-configured scope."
+commands.deny = ["http_execute_request"]

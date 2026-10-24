@@ -32,6 +32,7 @@ pub fn open_encrypted(data_dir: &Path, passphrase: &str) -> Result<Connection, C
     };
 
     init_schema(&conn)?;
+    crate::schema::init_domain_schema(&conn)?;
     migrate_ai_routing_and_memory(&conn)?;
     Ok(conn)
 }

@@ -4,51 +4,40 @@
 use regex::Regex;
 use std::sync::LazyLock;
 
-static RE_PRIVATE_KEY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(
-        r"(?s)-----BEGIN [A-Z0-9_-]+ PRIVATE KEY-----.*?-----END [A-Z0-9_-]+ PRIVATE KEY-----",
-    )
-    .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_PRIVATE_KEY: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"(?s)-----BEGIN [A-Z0-9_-]+ PRIVATE KEY-----.*?-----END [A-Z0-9_-]+ PRIVATE KEY-----").ok()
 });
 
-static RE_BEARER: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"(?i)\bBearer\s+[A-Za-z0-9\-._~+/]+=*")
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_BEARER: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"(?i)\bBearer\s+[A-Za-z0-9\-._~+/]+=*").ok()
 });
 
-static RE_JWT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b")
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_JWT: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"\beyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b").ok()
 });
 
-static RE_AWS_KEY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b(AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b")
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_AWS_KEY: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"\b(AKIA|ABIA|ACCA|ASIA)[0-9A-Z]{16}\b").ok()
 });
 
-static RE_OPENAI_KEY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\bsk-[a-zA-Z0-9_-]{20,}\b")
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_OPENAI_KEY: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"\bsk-[a-zA-Z0-9_-]{20,}\b").ok()
 });
 
-static RE_GITHUB_KEY: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}\b")
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_GITHUB_KEY: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r"\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36}\b").ok()
 });
 
-static RE_PASSWORD_FLAG: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"(?i)(--password[=\s]+|--pass[=\s]+|--secret[=\s]+|-p\s+)(['"]?[^\s'"]+['"]?)"#)
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_PASSWORD_FLAG: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r#"(?i)(--password[=\s]+|--pass[=\s]+|--secret[=\s]+|-p\s+)(['"]?[^\s'"]+['"]?)"#).ok()
 });
 
-static RE_URL_BASIC_AUTH: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"https?://[^:\s]+:[^@\s]+@"#)
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_URL_BASIC_AUTH: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r#"https?://[^:\s]+:[^@\s]+@"#).ok()
 });
 
-static RE_ANSI_ESCAPE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r#"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)"#)
-        .unwrap_or_else(|_| Regex::new("$^").expect("fallback regex"))
+static RE_ANSI_ESCAPE: LazyLock<Option<Regex>> = LazyLock::new(|| {
+    Regex::new(r#"\x1b\[[0-9;]*[a-zA-Z]|\x1b\][^\x07\x1b]*(\x07|\x1b\\)"#).ok()
 });
 
 #[derive(Debug, Clone, Default)]
@@ -63,54 +52,57 @@ impl PromptScrubber {
     /// Redact sensitive secrets, keys, credentials, and ANSI codes from text.
     /// # Infallible: in-memory regex scrubbing
     pub fn scrub(&self, input: &str) -> String {
-        let mut text = RE_ANSI_ESCAPE.replace_all(input, "").into_owned();
+        let mut text = match &*RE_ANSI_ESCAPE {
+            Some(re) => re.replace_all(input, "").into_owned(),
+            None => input.to_string(),
+        };
 
-        if RE_PRIVATE_KEY.is_match(&text) {
-            text = RE_PRIVATE_KEY
-                .replace_all(&text, "[REDACTED_PRIVATE_KEY]")
-                .into_owned();
+        if let Some(re) = &*RE_PRIVATE_KEY {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "[REDACTED_PRIVATE_KEY]").into_owned();
+            }
         }
 
-        if RE_BEARER.is_match(&text) {
-            text = RE_BEARER
-                .replace_all(&text, "Bearer [REDACTED_BEARER_TOKEN]")
-                .into_owned();
+        if let Some(re) = &*RE_BEARER {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "Bearer [REDACTED_BEARER_TOKEN]").into_owned();
+            }
         }
 
-        if RE_JWT.is_match(&text) {
-            text = RE_JWT
-                .replace_all(&text, "[REDACTED_JWT_TOKEN]")
-                .into_owned();
+        if let Some(re) = &*RE_JWT {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "[REDACTED_JWT_TOKEN]").into_owned();
+            }
         }
 
-        if RE_AWS_KEY.is_match(&text) {
-            text = RE_AWS_KEY
-                .replace_all(&text, "[REDACTED_AWS_KEY]")
-                .into_owned();
+        if let Some(re) = &*RE_AWS_KEY {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "[REDACTED_AWS_KEY]").into_owned();
+            }
         }
 
-        if RE_OPENAI_KEY.is_match(&text) {
-            text = RE_OPENAI_KEY
-                .replace_all(&text, "[REDACTED_API_KEY]")
-                .into_owned();
+        if let Some(re) = &*RE_OPENAI_KEY {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "[REDACTED_API_KEY]").into_owned();
+            }
         }
 
-        if RE_GITHUB_KEY.is_match(&text) {
-            text = RE_GITHUB_KEY
-                .replace_all(&text, "[REDACTED_GITHUB_TOKEN]")
-                .into_owned();
+        if let Some(re) = &*RE_GITHUB_KEY {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "[REDACTED_GITHUB_TOKEN]").into_owned();
+            }
         }
 
-        if RE_PASSWORD_FLAG.is_match(&text) {
-            text = RE_PASSWORD_FLAG
-                .replace_all(&text, "$1[REDACTED_PASSWORD]")
-                .into_owned();
+        if let Some(re) = &*RE_PASSWORD_FLAG {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "$1[REDACTED_PASSWORD]").into_owned();
+            }
         }
 
-        if RE_URL_BASIC_AUTH.is_match(&text) {
-            text = RE_URL_BASIC_AUTH
-                .replace_all(&text, "https://[REDACTED_AUTH]@")
-                .into_owned();
+        if let Some(re) = &*RE_URL_BASIC_AUTH {
+            if re.is_match(&text) {
+                text = re.replace_all(&text, "https://***@").into_owned();
+            }
         }
 
         text

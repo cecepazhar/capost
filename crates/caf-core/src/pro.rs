@@ -37,10 +37,11 @@ pub fn key_configured() -> bool {
 }
 
 pub fn get_pro_status() -> Result<ProStatus, CafError> {
+    let effective = crate::billing::get_effective_state()?;
     Ok(ProStatus {
-        is_pro: false,
-        plan: "free".to_string(),
+        is_pro: effective.is_pro,
+        plan: effective.billing_type,
         email: None,
-        expires_at: None,
+        expires_at: effective.expires_at,
     })
 }

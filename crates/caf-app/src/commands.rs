@@ -305,3 +305,140 @@ pub async fn get_performance_prefs() -> Result<prefs::PerformancePrefs, CafError
 pub async fn set_performance_prefs(prefs: prefs::PerformancePrefs) -> Result<(), CafError> {
     run_blocking(move || prefs::save_performance_prefs(&prefs)).await
 }
+
+// HTTP Workbench
+#[tauri::command]
+pub async fn http_execute_request(
+    payload: caf_core::http::HttpRequestPayload,
+) -> Result<caf_core::http::HttpResponsePayload, CafError> {
+    caf_core::http::execute_workbench_request(payload).await
+}
+
+async fn record_request_history(
+    method: &str,
+    url: &str,
+    resp: &caf_core::http_engine::HttpResponsePayload,
+) {
+    let method = method.to_string();
+    let url = url.to_string();
+    let resp = resp.clone();
+    let _ = run_blocking(move || {
+        let _ = caf_core::schema::record_history(
+            &method,
+            &url,
+            resp.status_code,
+            resp.latency_ms,
+            resp.size_bytes,
+        );
+        Ok(())
+    })
+    .await;
+}
+
+// HTTP Engine & Domain Storage Commands
+#[tauri::command]
+pub async fn http_send_request(
+    payload: caf_core::http_engine::HttpRequestPayload,
+) -> Result<caf_core::http_engine::HttpResponsePayload, CafError> {
+    let (method, url) = (payload.method.as_str().to_string(), payload.url.clone());
+    let resp = caf_core::http_engine::execute_request(payload).await?;
+    record_request_history(&method, &url, &resp).await;
+    Ok(resp)
+}
+
+#[tauri::command]
+pub async fn list_requests(
+    collection_id: Option<String>,
+) -> Result<Vec<caf_core::schema::RequestRecord>, CafError> {
+    run_blocking(move || caf_core::schema::list_requests(collection_id.as_deref())).await
+}
+
+#[tauri::command]
+pub async fn save_request(
+    input: caf_core::schema::RequestInput,
+) -> Result<caf_core::schema::RequestRecord, CafError> {
+    run_blocking(move || caf_core::schema::save_request(input)).await
+}
+
+#[tauri::command]
+pub async fn delete_request(id: String) -> Result<(), CafError> {
+    run_blocking(move || caf_core::schema::delete_request(&id)).await
+}
+
+#[tauri::command]
+pub async fn list_collections() -> Result<Vec<caf_core::schema::CollectionRecord>, CafError> {
+    run_blocking(caf_core::schema::list_collections).await
+}
+
+#[tauri::command]
+pub async fn save_collection(
+    input: caf_core::schema::CollectionInput,
+) -> Result<caf_core::schema::CollectionRecord, CafError> {
+    run_blocking(move || caf_core::schema::save_collection(input)).await
+}
+
+#[tauri::command]
+pub async fn list_history(
+    limit: Option<usize>,
+) -> Result<Vec<caf_core::schema::HistoryRecord>, CafError> {
+    run_blocking(move || caf_core::schema::list_history(limit)).await
+}
+
+#[tauri::command]
+pub async fn clear_history() -> Result<(), CafError> {
+    run_blocking(caf_core::schema::clear_history).await
+}
+
+#[tauri::command]
+pub async fn list_environments() -> Result<Vec<caf_core::schema::EnvironmentRecord>, CafError> {
+    run_blocking(caf_core::schema::list_environments).await
+}
+
+#[tauri::command]
+pub async fn save_environment(
+    input: caf_core::schema::EnvironmentInput,
+) -> Result<caf_core::schema::EnvironmentRecord, CafError> {
+    run_blocking(move || caf_core::schema::save_environment(input)).await
+}
+
+// Billing & Licensing commands
+#[tauri::command]
+pub async fn billing_get_state() -> Result<caf_core::billing::state::EffectiveState, CafError> {
+    run_blocking(caf_core::billing::get_effective_state).await
+}
+
+#[tauri::command]
+pub async fn billing_get_effective_state() -> Result<caf_core::billing::state::EffectiveState, CafError> {
+    run_blocking(caf_core::billing::get_effective_state).await
+}
+
+#[tauri::command]
+pub async fn billing_activate_license(
+    #[allow(non_snake_case)] licenseKey: Option<String>,
+    license_key: Option<String>,
+) -> Result<caf_core::billing::state::EffectiveState, CafError> {
+    let key = licenseKey.or(license_key).unwrap_or_default();
+    run_blocking(move || caf_core::billing::activate_license(&key)).await
+}
+
+#[tauri::command]
+pub async fn billing_start_trial() -> Result<caf_core::billing::state::EffectiveState, CafError> {
+    run_blocking(caf_core::billing::start_trial).await
+}
+
+#[tauri::command]
+pub async fn billing_sign_out() -> Result<(), CafError> {
+    run_blocking(caf_core::billing::sign_out).await
+}
+
+#[tauri::command]
+pub fn open_external_url(url: String) -> Result<(), CafError> {
+    #[cfg(target_os = "linux")]
+    let _ = std::process::Command::new("xdg-open").arg(&url).spawn();
+    #[cfg(target_os = "windows")]
+    let _ = std::process::Command::new("cmd").args(["/C", "start", "", &url]).spawn();
+    #[cfg(target_os = "macos")]
+    let _ = std::process::Command::new("open").arg(&url).spawn();
+    Ok(())
+}
+

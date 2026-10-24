@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-billing-get-effective-state"
+description = "Enables the billing_get_effective_state command without any pre-configured scope."
+commands.allow = ["billing_get_effective_state"]
+
+[[permission]]
+identifier = "deny-billing-get-effective-state"
+description = "Denies the billing_get_effective_state command without any pre-configured scope."
+commands.deny = ["billing_get_effective_state"]

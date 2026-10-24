@@ -201,3 +201,25 @@ export async function cmdSetPerformancePrefs(args: { prefs: PerformancePrefs }):
   return await invoke<void>('set_performance_prefs', args);
 }
 
+// HTTP Workbench payload
+export interface HttpRequestPayload {
+  method: string;
+  url: string;
+  headers: Record<string, string>;
+  body?: string | null;
+  timeout_ms?: number | null;
+}
+
+export interface HttpResponsePayload {
+  status: number;
+  status_text: string;
+  headers: Record<string, string>;
+  body: string;
+  elapsed_ms: number;
+  size_bytes: number;
+}
+
+export async function cmdHttpExecuteRequest(args: { payload: HttpRequestPayload }): Promise<HttpResponsePayload> {
+  return await invoke<HttpResponsePayload>('http_execute_request', args);
+}
+

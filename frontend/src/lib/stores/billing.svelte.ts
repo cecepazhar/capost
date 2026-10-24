@@ -37,9 +37,20 @@ function createBillingStore() {
         set(state);
         return state;
       } catch (err) {
-        console.error('Failed to refresh entitlement state:', err);
-        throw err;
+        try {
+          const state = await invoke<EntitlementState>('billing_get_state');
+          set(state);
+          return state;
+        } catch (e) {
+          console.error('Failed to refresh entitlement state:', e);
+          throw e;
+        }
       }
+    },
+    async startTrial(): Promise<EntitlementState> {
+      const state = await invoke<EntitlementState>('billing_start_trial');
+      set(state);
+      return state;
     },
     async requestOtp(email: string): Promise<void> {
       return invoke('billing_request_otp', { email });

@@ -12,6 +12,36 @@ pub fn require_pro(
     product_code: &str,
     now_unix: u64,
 ) -> Result<EffectiveState, CafError> {
+    // 1. License key check
+    if let Some((_key, tier, billing_type)) = store::get_license_info()? {
+        if tier == "pro" {
+            return Ok(EffectiveState {
+                tier: EffectiveTier::Pro,
+                billing_type,
+                is_pro: true,
+                expires_at: None,
+                grace_until: None,
+                warning: None,
+            });
+        }
+    }
+
+    // 2. Trial check
+    if let Some((_started, expires_at)) = store::get_trial_info()? {
+        if now_unix <= expires_at {
+            let expires_dt = chrono::DateTime::from_timestamp(expires_at as i64, 0)
+                .map(|dt| dt.to_rfc3339());
+            return Ok(EffectiveState {
+                tier: EffectiveTier::Pro,
+                billing_type: "trial".to_string(),
+                is_pro: true,
+                expires_at: expires_dt,
+                grace_until: None,
+                warning: None,
+            });
+        }
+    }
+
     let device_id = store::get_device_id()?.unwrap_or_else(|| "default_dev".to_string());
     let cached_token = store::get_cached_token()?;
     let last_verified_at = store::get_last_verified_at()?;

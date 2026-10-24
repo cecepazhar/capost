@@ -254,6 +254,93 @@ pub const COMMAND_POLICIES: &[CommandPolicy] = &[
         policy: Policy::Session,
         returns_list: false,
     },
+    CommandPolicy {
+        name: "http_execute_request",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    // HTTP Engine & Domain Storage
+    CommandPolicy {
+        name: "http_send_request",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "list_requests",
+        policy: Policy::Session,
+        returns_list: true,
+    },
+    CommandPolicy {
+        name: "save_request",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "delete_request",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "list_collections",
+        policy: Policy::Session,
+        returns_list: true,
+    },
+    CommandPolicy {
+        name: "save_collection",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "list_history",
+        policy: Policy::Session,
+        returns_list: true,
+    },
+    CommandPolicy {
+        name: "clear_history",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "list_environments",
+        policy: Policy::Session,
+        returns_list: true,
+    },
+    CommandPolicy {
+        name: "save_environment",
+        policy: Policy::Session,
+        returns_list: false,
+    },
+    // Billing & Licensing
+    CommandPolicy {
+        name: "billing_get_state",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "billing_get_effective_state",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "billing_activate_license",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "billing_start_trial",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "billing_sign_out",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
+        name: "open_external_url",
+        policy: Policy::Public,
+        returns_list: false,
+    },
 ];
 
 pub fn get_command_policy(command_name: &str) -> Option<&'static CommandPolicy> {
