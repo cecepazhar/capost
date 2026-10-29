@@ -28,13 +28,4 @@
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <line
-    x1="256"
-    y1="105"
-    x2="256"
-    y2="315"
-    stroke={spineStroke}
-    stroke-width="26"
-    stroke-linecap="round"
-  />
 </svg>

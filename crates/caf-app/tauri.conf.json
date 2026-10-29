@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "CAPost",
-  "version": "0.1.0-dev",
+  "version": "1.0.1",
   "identifier": "com.fathforce.capost",
   "build": {
     "frontendDist": "../../frontend/build"

@@ -1,6 +1,6 @@
 [package]
 name = "caf-migrator"
-version = "0.1.0"
+version = "1.0.1"
 edition = "2024"
 license = "MIT OR Apache-2.0"
 description = "Database migrator tool for CAPost"
@@ -16,7 +16,7 @@ clap = { version = "4", features = ["derive"] }
 tempfile = "3"
 
 # Use caf-core for shared types if needed
-caf-core = { version = "0.1.0-dev", path = "../caf-core" }
+caf-core = { version = "1.0.1", path = "../caf-core" }
 
 [[bin]]
 name = "caf-migrator"

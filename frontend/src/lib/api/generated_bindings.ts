@@ -225,3 +225,27 @@ export async function invoke_saveEnvironment(input: any): Promise<any> {
   return invoke('save_environment', { input: input });
 }
 
+export async function invoke_billingGetState(): Promise<any> {
+  return invoke('billing_get_state');
+}
+
+export async function invoke_billingGetEffectiveState(): Promise<any> {
+  return invoke('billing_get_effective_state');
+}
+
+export async function invoke_billingActivateLicense(licenseKey: string | null): Promise<any> {
+  return invoke('billing_activate_license', { licenseKey: licenseKey, license_key: licenseKey });
+}
+
+export async function invoke_billingStartTrial(): Promise<any> {
+  return invoke('billing_start_trial');
+}
+
+export async function invoke_billingSignOut(): Promise<any> {
+  return invoke('billing_sign_out');
+}
+
+export async function invoke_openExternalUrl(url: string): Promise<any> {
+  return invoke('open_external_url', { url: url });
+}
+

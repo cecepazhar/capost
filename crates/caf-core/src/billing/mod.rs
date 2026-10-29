@@ -97,14 +97,40 @@ pub fn activate_license(license_key: &str) -> Result<EffectiveState, CafError> {
         return Err(CafError::Validation(crate::error::ValidationError::EmptyField));
     }
     let upper = clean_key.to_uppercase();
-    let is_founder = upper.contains("FOUNDER") || upper.contains("CECEP");
-    let is_lifetime = upper.starts_with("CAPOST-LIFE-") || upper.starts_with("CREEM-LIFE-") || is_founder;
-    let is_valid = is_lifetime || upper.starts_with("CAPOST-PRO-") || upper.starts_with("CREEM-") || clean_key.len() >= 8;
-
-    if !is_valid {
+    // New license format: CA[PRODUCT][TIER]-[RAND6]-[CK] (e.g., CATB99-A1B2C3-7)
+    let parts: Vec<&str> = upper.split('-').collect();
+    if parts.len() != 3 {
         return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat));
     }
-
+    let prefix_tier = parts[0];
+    let rand_part = parts[1];
+    let ck_str = parts[2];
+    if prefix_tier.len() != 6 { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    if rand_part.len() != 6 { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    if ck_str.len() != 1 { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    if !prefix_tier.starts_with("CA") { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    let product = &prefix_tier[2..4];
+    let tier = &prefix_tier[4..6];
+    let allowed = ["TM","MK","CD","SH","TB","PS","UI","AA","CF","CB"];
+    if !allowed.contains(&product) { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    if tier.parse::<u8>().is_err() { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    if !rand_part.chars().all(|c| c.is_ascii_alphanumeric()) { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    // Compute checksum (mod‑10)
+    let mut sum: u32 = 0;
+    for ch in upper[..upper.len()-2].chars() {
+        let val = if ch.is_ascii_digit() {
+            (ch as u8 - b'0') as u32
+        } else if ch.is_ascii_uppercase() {
+            (ch as u8 - b'A' + 10) as u32
+        } else {
+            0
+        };
+        sum += val;
+    }
+    let expected_ck = ((10 - (sum % 10)) % 10) as u8;
+    let provided_ck = ck_str.parse::<u8>().map_err(|_| CafError::Validation(crate::error::ValidationError::InvalidFormat))?;
+    if expected_ck != provided_ck { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    let is_lifetime = tier == "99";
     let billing_type = if is_lifetime { "lifetime" } else { "yearly" };
     store::save_license_info(clean_key, "pro", billing_type)?;
     get_effective_state()

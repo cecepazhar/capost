@@ -596,7 +596,7 @@ dependencies = [
 
 [[package]]
 name = "caf-app"
-version = "0.1.0"
+version = "1.0.1"
 dependencies = [
  "async-trait",
  "caf-core",
@@ -620,7 +620,7 @@ dependencies = [
 
 [[package]]
 name = "caf-cli"
-version = "0.1.0"
+version = "1.0.1"
 dependencies = [
  "caf-core",
  "clap",
@@ -632,7 +632,7 @@ dependencies = [
 
 [[package]]
 name = "caf-core"
-version = "0.1.0"
+version = "1.0.1"
 dependencies = [
  "aes-gcm",
  "argon2",
@@ -672,7 +672,7 @@ dependencies = [
 
 [[package]]
 name = "caf-migrator"
-version = "0.1.0"
+version = "1.0.1"
 dependencies = [
  "caf-core",
  "chrono",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "caf-xtask"
-version = "0.1.0"
+version = "1.0.1"
 dependencies = [
  "axum",
  "base64 0.23.1",

@@ -2,7 +2,7 @@
 name = "CAPost"
 slug = "capost"
 bundle_id = "com.fathforce.capost"
-version = "0.1.0"
+version = "1.0.1"
 accent_color = "indigo"
 error_prefix = "CAPOST"
 description = "Zero-Knowledge AI-Native API Studio & Workbench for modern backend and QA engineers"
