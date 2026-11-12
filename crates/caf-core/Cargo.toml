@@ -16,6 +16,7 @@ thiserror.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 directories.workspace = true
+anyhow = "1.0"
 rand = "0.8"
 argon2 = "0.5"
 secrecy = "0.8"

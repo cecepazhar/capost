@@ -635,6 +635,7 @@ name = "caf-core"
 version = "1.0.1"
 dependencies = [
  "aes-gcm",
+ "anyhow",
  "argon2",
  "async-trait",
  "axum",
