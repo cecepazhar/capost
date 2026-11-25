@@ -227,7 +227,7 @@
                 'Upgrade Account',
                 'Fitur AI memerlukan lisensi CAPost PRO. Pro member dapat menggunakan API Key sendiri (BYOK - OpenAI, Claude, Gemini, DeepSeek, Ollama) tanpa batas.'
               )}
-            class="no-drag px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-indigo-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-[0_0_14px_rgba(99,102,241,0.3)] transition-all cursor-pointer flex items-center gap-1.5"
+            class="no-drag px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest text-neutral-500 dark:text-neutral-400 bg-neutral-100 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 hover:border-brand-300 hover:text-brand-600 dark:hover:text-brand-400 hover:shadow-[0_0_14px_rgba(99,102,241,0.3)] transition-all cursor-pointer flex items-center gap-1.5"
             title="Upgrade ke CAPost PRO"
           >
             <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -336,9 +336,16 @@
         <AmbientGlow defaultAccent="#64748b" />
         
         <main class="flex-1 min-w-0 flex overflow-hidden relative z-10 bg-white dark:bg-[#161616] {cardBorderClass} rounded-2xl md:rounded-none md:rounded-tl-xl transition-colors duration-150">
-          <div class="flex-1 min-w-0 overflow-auto text-neutral-900 dark:text-neutral-100 relative px-4 py-6 md:px-10 md:py-10 bg-[linear-gradient(to_right,#0000000a_1px,transparent_1px),linear-gradient(to_bottom,#0000000a_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:56px_56px]">
+          {#if page.url.pathname.startsWith('/requests')}
+          <div class="flex-1 min-w-0 min-h-0 flex overflow-hidden text-neutral-900 dark:text-neutral-100 relative">
             {@render children()}
           </div>
+          {:else}
+          <!-- Pages own their gutter via `.cp-page` so every screen has the same 24px padding. -->
+          <div class="flex-1 min-w-0 overflow-auto wb-scroll text-neutral-900 dark:text-neutral-100 relative bg-neutral-50/60 dark:bg-[#141414]">
+            {@render children()}
+          </div>
+          {/if}
 
           <!-- Floating AI Panel Overlay (Non-destructive) -->
           {#if aiChat.open}

@@ -51,14 +51,6 @@ export const GENERATED_NAV_ITEMS: GeneratedNavItem[] = [
     path: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
   },
   {
-    key: "mock",
-    label: "Mock Server",
-    href: "/mock",
-    icon: "code",
-    description: "Local API mock server generated from JSON schema",
-    path: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"
-  },
-  {
     key: "history",
     label: "History",
     href: "/history",

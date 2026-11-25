@@ -7,8 +7,17 @@
 
   let { size = 28, mode = 'brand', className = '' }: Props = $props();
 
-  const polygonStroke = $derived(mode === 'white' ? '#FFFFFF' : '#6366F1');
-  const spineStroke = $derived(mode === 'light' ? '#0A0A0C' : '#FFFFFF');
+  // Brand colour matches the app icon's arrow (#38BDF8, sky-400). On light
+  // backgrounds a slightly deeper sky-500 keeps the same hue but stays legible.
+  const strokeClass = $derived(
+    mode === 'white'
+      ? 'stroke-white'
+      : mode === 'light'
+        ? 'stroke-[#0EA5E9]'
+        : mode === 'dark'
+          ? 'stroke-[#38BDF8]'
+          : 'stroke-[#0EA5E9] dark:stroke-[#38BDF8]'
+  );
 </script>
 
 <svg
@@ -23,7 +32,7 @@
   <polygon
     points="256,105 412,385 256,315 100,385"
     fill="none"
-    stroke={polygonStroke}
+    class={strokeClass}
     stroke-width="28"
     stroke-linecap="round"
     stroke-linejoin="round"

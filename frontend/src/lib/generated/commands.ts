@@ -208,6 +208,17 @@ export interface HttpRequestPayload {
   headers: Record<string, string>;
   body?: string | null;
   timeout_ms?: number | null;
+  multipart?: MultipartField[] | null;
+  body_file?: string | null;
+  insecure?: boolean | null;
+  follow_redirects?: boolean | null;
+}
+
+export interface MultipartField {
+  name: string;
+  value?: string | null;
+  file_path?: string | null;
+  content_type?: string | null;
 }
 
 export interface HttpResponsePayload {
@@ -217,6 +228,7 @@ export interface HttpResponsePayload {
   body: string;
   elapsed_ms: number;
   size_bytes: number;
+  url?: string;
 }
 
 export async function cmdHttpExecuteRequest(args: { payload: HttpRequestPayload }): Promise<HttpResponsePayload> {

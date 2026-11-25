@@ -69,8 +69,13 @@
     "allow-billing-start-trial",
     "allow-billing-sign-out",
     "allow-open-external-url",
+    "allow-save-text-file",
     "dialog:default",
     "process:default",
-    "fs:default"
+    "fs:default",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [{ "path": "$HOME/**" }, { "path": "$DOWNLOAD/**" }, { "path": "$DOCUMENT/**" }, { "path": "$DESKTOP/**" }]
+    }
   ]
 }

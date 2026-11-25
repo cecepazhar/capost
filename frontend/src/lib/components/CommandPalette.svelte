@@ -106,11 +106,11 @@
             <button
               onclick={() => cmd.action()}
               onmouseenter={() => (selectedIndex = idx)}
-              class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-sm transition-colors {selectedIndex === idx ? 'bg-indigo-600 text-white' : 'text-neutral-300 hover:bg-neutral-800'}"
+              class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-left text-sm transition-colors {selectedIndex === idx ? 'bg-brand-600 text-white' : 'text-neutral-300 hover:bg-neutral-800'}"
             >
               <span>{cmd.title}</span>
               <span
-                class="text-xs px-2 py-0.5 rounded font-mono {selectedIndex === idx ? 'bg-indigo-700 text-indigo-200' : 'bg-neutral-800 text-neutral-500'}"
+                class="text-xs px-2 py-0.5 rounded font-mono {selectedIndex === idx ? 'bg-brand-700 text-brand-200' : 'bg-neutral-800 text-neutral-500'}"
               >
                 {cmd.category}
               </span>

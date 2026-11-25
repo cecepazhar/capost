@@ -135,7 +135,7 @@
           type="button"
           onclick={() => { activeTab = 'trial'; errorMessage = null; }}
           class="flex-1 py-3 px-2 text-center transition-colors border-b-2 {activeTab === 'trial'
-            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5'
+            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-500/5'
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'}"
         >
           Trial 7 Hari
@@ -144,7 +144,7 @@
           type="button"
           onclick={() => { activeTab = 'creem'; errorMessage = null; }}
           class="flex-1 py-3 px-2 text-center transition-colors border-b-2 {activeTab === 'creem'
-            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5'
+            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-500/5'
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'}"
         >
           Beli via Creem
@@ -153,7 +153,7 @@
           type="button"
           onclick={() => { activeTab = 'activate'; errorMessage = null; }}
           class="flex-1 py-3 px-2 text-center transition-colors border-b-2 {activeTab === 'activate'
-            ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400 bg-indigo-500/5'
+            ? 'border-brand-500 text-brand-600 dark:text-brand-400 bg-brand-500/5'
             : 'border-transparent text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200'}"
         >
           Aktivasi Lisensi
@@ -178,7 +178,7 @@
               type="button"
               onclick={handleStartTrial}
               disabled={isStartingTrial}
-              class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.99] transition-all shadow-md shadow-brand-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
               {#if isStartingTrial}
                 <span class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
@@ -221,14 +221,14 @@
                 type="text"
                 bind:value={licenseKey}
                 placeholder="mis. CAPOST-PRO-XXXX-XXXX"
-                class="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-mono text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 uppercase tracking-wider"
+                class="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-mono text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 uppercase tracking-wider"
               />
             </div>
 
             <button
               type="submit"
               disabled={isActivating || !licenseKey.trim()}
-              class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-[0.99] transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+              class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.99] transition-all shadow-md shadow-brand-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
               {#if isActivating}
                 <span class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>

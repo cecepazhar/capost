@@ -28,7 +28,7 @@
       type="button"
       disabled={groupCount < opt.minGroups}
       onclick={() => setGlobalLayout(opt.value)}
-      class="px-2 py-1 flex items-center gap-1 rounded text-xs font-medium transition-colors disabled:opacity-30 {currentLayout === opt.value ? 'bg-indigo-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}"
+      class="px-2 py-1 flex items-center gap-1 rounded text-xs font-medium transition-colors disabled:opacity-30 {currentLayout === opt.value ? 'bg-brand-600 text-white shadow-xs' : 'text-neutral-400 hover:text-white hover:bg-neutral-800'}"
       title={`${opt.label} ${t('dualSplit.viewSuffix')}`}
     >
       <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

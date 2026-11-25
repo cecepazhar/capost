@@ -140,7 +140,7 @@
   }
 </script>
 
-<div class="p-6 max-w-6xl mx-auto space-y-6">
+<div class="cp-page">
   <PageHeader
     title="Custom Skills Catalog (@skills)"
     subtitle="Skill modular yang disuntikkan secara otomatis ke Master AI Router saat trigger dipanggil dalam terminal atau floating chat."

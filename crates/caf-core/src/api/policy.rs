@@ -341,6 +341,11 @@ pub const COMMAND_POLICIES: &[CommandPolicy] = &[
         policy: Policy::Public,
         returns_list: false,
     },
+    CommandPolicy {
+        name: "save_text_file",
+        policy: Policy::Public,
+        returns_list: false,
+    },
 ];
 
 pub fn get_command_policy(command_name: &str) -> Option<&'static CommandPolicy> {

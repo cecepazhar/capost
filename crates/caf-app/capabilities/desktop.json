@@ -4,5 +4,5 @@
   "description": "Desktop-only permissions. The updater plugin is not registered on mobile, so its permission cannot live in the shared default capability.",
   "platforms": ["linux", "macOS", "windows"],
   "windows": ["main"],
-  "permissions": ["updater:default"]
+  "permissions": ["updater:default", "window-state:default"]
 }

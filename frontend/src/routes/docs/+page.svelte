@@ -48,7 +48,7 @@ npm run tauri dev`;
   ];
 </script>
 
-<PageContainer class="p-6 space-y-6 max-w-4xl mx-auto">
+<PageContainer class="cp-page !max-w-4xl">
   <PageHeader
     title={'Developer Documentation'}
     subtitle={'API reference, installation guides, and architectural principles of CAPost.'}

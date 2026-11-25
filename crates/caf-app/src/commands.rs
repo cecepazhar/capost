@@ -431,6 +431,35 @@ pub async fn billing_sign_out() -> Result<(), CafError> {
     run_blocking(caf_core::billing::sign_out).await
 }
 
+/// Shows a native "Save as" dialog and writes `contents` to the chosen file.
+/// Returns the saved path, or `None` when the user cancels. Writing happens here
+/// (not through the fs plugin) so any drive/folder the user picks works.
+#[tauri::command]
+pub async fn save_text_file(
+    app: tauri::AppHandle,
+    default_name: String,
+    contents: String,
+) -> Result<Option<String>, CafError> {
+    use tauri_plugin_dialog::DialogExt;
+    let ext = std::path::Path::new(&default_name)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("json")
+        .to_string();
+    let picked = app
+        .dialog()
+        .file()
+        .set_file_name(&default_name)
+        .add_filter(ext.to_uppercase(), &[ext.as_str()])
+        .blocking_save_file();
+    let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
+        return Ok(None);
+    };
+    std::fs::write(&path, contents.as_bytes())
+        .map_err(|e| CafError::generic(format!("Gagal menulis file: {e}")))?;
+    Ok(Some(path.to_string_lossy().into_owned()))
+}
+
 #[tauri::command]
 pub fn open_external_url(url: String) -> Result<(), CafError> {
     #[cfg(target_os = "linux")]

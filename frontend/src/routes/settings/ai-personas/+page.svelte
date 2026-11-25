@@ -141,7 +141,7 @@
   }
 </script>
 
-<div class="max-w-6xl mx-auto space-y-6">
+<div class="cp-page">
   <PageHeader
     icon="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
     accent="indigo"
@@ -171,7 +171,7 @@
         </div>
         <button
           onclick={openAddPersona}
-          class="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm transition-colors flex items-center gap-1.5 self-start sm:self-auto"
+          class="px-3.5 py-1.5 text-xs font-semibold rounded-md bg-brand-600 hover:bg-brand-500 text-white shadow-sm transition-colors flex items-center gap-1.5 self-start sm:self-auto"
         >
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -219,7 +219,7 @@
                   <ul class="text-xs space-y-1">
                     {#each p.custom_rules as rule}
                       <li class="flex items-start gap-1.5 text-neutral-700 dark:text-neutral-300">
-                        <span class="text-indigo-500 font-bold">•</span>
+                        <span class="text-brand-500 font-bold">•</span>
                         <span>{rule}</span>
                       </li>
                     {/each}
@@ -232,7 +232,7 @@
               <div class="flex gap-2">
                 <button
                   onclick={() => openEditPersona(p)}
-                  class="text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+                  class="text-brand-600 dark:text-brand-400 hover:underline font-medium"
                 >
                   Edit
                 </button>
@@ -337,7 +337,7 @@
             type="checkbox"
             id="persona-default"
             bind:checked={formIsDefault}
-            class="rounded border-neutral-300 dark:border-neutral-700 text-indigo-600 focus:ring-indigo-500"
+            class="rounded border-neutral-300 dark:border-neutral-700 text-brand-600 focus:ring-brand-500"
           />
           <label for="persona-default" class="text-xs text-neutral-700 dark:text-neutral-300 font-medium">
             Make this persona the Global Default
@@ -355,7 +355,7 @@
         <button
           onclick={handleSavePersona}
           disabled={saving}
-          class="px-4 py-2 text-xs font-semibold rounded-md bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white transition-colors"
+          class="px-4 py-2 text-xs font-semibold rounded-md bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white transition-colors"
         >
           {saving ? 'Saving...' : 'Save Persona'}
         </button>

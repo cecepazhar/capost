@@ -26,7 +26,7 @@
   {#each tabGroups as group (group.id)}
     {@const isActive = group.id === activeGroupId}
     <div
-      class="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all cursor-pointer {isActive ? 'bg-neutral-800/90 border-indigo-500/50 text-white shadow-sm' : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'}"
+      class="group flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all cursor-pointer {isActive ? 'bg-neutral-800/90 border-brand-500/50 text-white shadow-sm' : 'bg-neutral-900/60 border-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-700'}"
       onclick={() => selectGroup(group.id)}
       role="button"
       tabindex="0"

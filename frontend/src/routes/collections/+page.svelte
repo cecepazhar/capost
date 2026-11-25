@@ -1,258 +1,247 @@
 <script lang="ts">
-  import { getWorkbench, type CollectionItem, type WorkbenchRequest } from '$lib/stores/workbench.svelte';
+  import { getWorkbench, newRequest, type CollectionItem, type WorkbenchRequest } from '$lib/stores/workbench.svelte';
   import { showToast } from '$lib/stores/uiNotifications.svelte';
   import { goto } from '$app/navigation';
+  import PageHead from '$lib/components/page/PageHead.svelte';
+  import { methodText, methodShort } from '$lib/ui/http';
+  import { exportCollectionFile, importFromFiles } from '$lib/ui/transfer';
 
   const wb = getWorkbench();
-  let collections = $state(wb.collections);
-  let isModalOpen = $state(false);
-  let newColName = $state('');
-  let newColDesc = $state('');
-  let expandedColId = $state<string | null>(null);
-  let activeCollectionId = $state<string | null>(null);
+  const collections = $derived(wb.collections);
 
-  function openNewCollectionModal() {
-    newColName = '';
-    newColDesc = '';
-    isModalOpen = true;
-  }
+  let filter = $state('');
+  let selectedId = $state<string | null>(wb.collections[0]?.id ?? null);
+  let modalOpen = $state(false);
+  let newName = $state('');
+  let newDesc = $state('');
+  let renaming = $state(false);
 
-  function createCollection() {
-    if (!newColName.trim()) {
-      showToast('Collection name is required', 'error');
-      return;
+  const visible = $derived(
+    filter.trim()
+      ? collections.filter((c) => {
+          const q = filter.toLowerCase();
+          return c.name.toLowerCase().includes(q) || c.requests.some((r) => r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q));
+        })
+      : collections
+  );
+  const selected = $derived(collections.find((c) => c.id === selectedId) ?? visible[0] ?? null);
+  const totalRequests = $derived(collections.reduce((n, c) => n + c.requests.length, 0));
+
+  /** Requests grouped by folder path, in collection order. */
+  const groups = $derived.by(() => {
+    if (!selected) return [] as { path: string; items: WorkbenchRequest[] }[];
+    const q = filter.trim().toLowerCase();
+    const map = new Map<string, WorkbenchRequest[]>();
+    for (const r of selected.requests) {
+      if (q && !selected.name.toLowerCase().includes(q) && !r.name.toLowerCase().includes(q) && !r.url.toLowerCase().includes(q)) continue;
+      const k = (r.folder ?? []).join(' / ');
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(r);
     }
+    return [...map.entries()].map(([path, items]) => ({ path, items }));
+  });
 
-    const newCollection: CollectionItem = {
-      id: crypto.randomUUID(),
-      name: newColName.trim(),
-      description: newColDesc.trim() || 'New collection',
-      createdAt: Date.now(),
-      requests: []
-    };
-    wb.saveCollection(newCollection);
-    collections = wb.collections;
-    isModalOpen = false;
-    activeCollectionId = newCollection.id;
-    expandedColId = newCollection.id;
-    showToast(`Collection "${newCollection.name}" created`, 'success');
+  const folderCount = (c: CollectionItem) =>
+    new Set([...c.requests.map((r) => (r.folder ?? []).join('/')).filter(Boolean), ...Object.keys(c.folders ?? {})]).size;
+
+  function openModal() {
+    newName = '';
+    newDesc = '';
+    modalOpen = true;
   }
-
-  function toggleCollection(id: string) {
-    expandedColId = expandedColId === id ? null : id;
-    activeCollectionId = id;
+  function create() {
+    if (!newName.trim()) return showToast('Collection name is required', 'error');
+    const col: CollectionItem = { id: crypto.randomUUID(), name: newName.trim(), description: newDesc.trim(), createdAt: Date.now(), requests: [] };
+    wb.saveCollection(col);
+    selectedId = col.id;
+    modalOpen = false;
+    showToast(`Collection "${col.name}" created`, 'success');
   }
-
-  function loadRequest(req: WorkbenchRequest) {
-    wb.loadRequest(req);
-    goto('/');
+  function remove(col: CollectionItem) {
+    if (!confirm(`Delete collection "${col.name}" and its ${col.requests.length} request(s)? This cannot be undone.`)) return;
+    wb.deleteCollection(col.id);
+    selectedId = wb.collections[0]?.id ?? null;
+    showToast('Collection deleted', 'info');
   }
-
-  function deleteCollection(id: string) {
-    wb.deleteCollection(id);
-    collections = wb.collections;
-    if (activeCollectionId === id) activeCollectionId = null;
-    if (expandedColId === id) expandedColId = null;
+  function openRequest(r: WorkbenchRequest, col: CollectionItem) {
+    wb.newTab(r, { id: r.id, collectionId: col.id }, { preview: false });
+    goto('/requests');
   }
-
-  function addRequestToActiveCollection() {
-    if (!activeCollectionId) {
-      showToast('Select a collection first to add the current request', 'error');
-      return;
-    }
-    const reqCopy = JSON.parse(JSON.stringify(wb.currentRequest)) as WorkbenchRequest;
-    reqCopy.id = crypto.randomUUID();
-    reqCopy.name = reqCopy.name || 'New Request';
-    wb.addRequestToCollection(activeCollectionId, reqCopy);
-    collections = wb.collections;
-    showToast('Request saved to collection', 'success');
+  function addRequest(col: CollectionItem) {
+    const r = wb.addRequestToCollection(col.id, newRequest({ name: 'New Request' }));
+    if (r) openRequest(r, col);
   }
-
-  function formatDate(ts: number) {
-    return new Date(ts).toLocaleDateString();
+  async function doImport() {
+    const before = new Set(wb.collections.map((c) => c.id));
+    await importFromFiles();
+    const added = wb.collections.find((c) => !before.has(c.id));
+    if (added) selectedId = added.id;
   }
 </script>
 
-<div class="flex flex-col h-full max-w-5xl mx-auto p-6 space-y-5">
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-bold text-neutral-900 dark:text-white">Collections</h1>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-        {collections.length} collections · {collections.reduce((acc, c) => acc + c.requests.length, 0)} total requests
-      </p>
-    </div>
-    <div class="flex items-center gap-2">
-      <button
-        onclick={openNewCollectionModal}
-        class="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 transition-colors"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>New Collection</span>
+<div class="cp-page h-full">
+  <PageHead title="Collections" subtitle={`${collections.length} collections · ${totalRequests} requests`}>
+    {#snippet actions()}
+      <button class="cp-btn" onclick={doImport} title="Import Postman v2/v2.1, Insomnia, Bruno or CAPost files">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
+        Import
       </button>
-    </div>
-  </div>
+      <button class="cp-btn cp-btn-primary" onclick={openModal}>
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" /></svg>
+        New collection
+      </button>
+    {/snippet}
+  </PageHead>
 
-  <!-- Collections List -->
-  <div class="space-y-3">
-    {#if collections.length === 0}
-      <div class="text-center py-12">
-        <svg class="w-12 h-12 mx-auto text-neutral-300 dark:text-neutral-600 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-        </svg>
-        <p class="text-sm text-neutral-400 dark:text-neutral-500">No collections yet. Create one to organize your API requests.</p>
+  {#if collections.length === 0}
+    <div class="cp-card cp-empty">
+      <div class="cp-empty-icon">
+        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
       </div>
-    {:else}
-      {#each collections as col (col.id)}
-        <div
-          class="bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl overflow-hidden transition-colors {expandedColId === col.id ? 'ring-2 ring-indigo-500/20' : ''}"
-        >
-          <!-- Collection Row -->
-          <div
-            class="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors"
-            role="button"
-            tabindex="0"
-            onclick={() => toggleCollection(col.id)}
-            onkeydown={(e) => e.key === 'Enter' && toggleCollection(col.id)}
-          >
-            <div class="flex items-center gap-3 min-w-0">
-              <svg class="w-5 h-5 text-neutral-400 dark:text-neutral-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-              </svg>
-              <div class="min-w-0">
-                <h3 class="text-sm font-semibold text-neutral-900 dark:text-white truncate">{col.name}</h3>
-                <p class="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{col.description}</p>
+      <p class="text-[13px] font-medium text-neutral-800 dark:text-neutral-200">No collections yet</p>
+      <p class="cp-muted max-w-sm">Import a Postman collection (v2 / v2.1), an Insomnia export or a Bruno file, or start an empty collection.</p>
+      <div class="flex gap-2 mt-2">
+        <button class="cp-btn" onclick={doImport}>Import file</button>
+        <button class="cp-btn cp-btn-primary" onclick={openModal}>New collection</button>
+      </div>
+    </div>
+  {:else}
+    <div class="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-5 flex-1 min-h-[420px]">
+      <!-- list -->
+      <div class="cp-card flex flex-col min-h-0 overflow-hidden">
+        <div class="p-2 border-b border-neutral-200 dark:border-neutral-800">
+          <input class="cp-input" placeholder="Search collections & requests" bind:value={filter} />
+        </div>
+        <div class="flex-1 min-h-0 overflow-y-auto wb-scroll p-1.5 space-y-0.5">
+          {#each visible as col (col.id)}
+            <button
+              class="w-full text-left px-2.5 py-2 rounded-lg transition-colors {selected?.id === col.id ? 'bg-brand-500/10 text-neutral-900 dark:text-white' : 'hover:bg-neutral-100 dark:hover:bg-white/[0.04]'}"
+              onclick={() => {
+                selectedId = col.id;
+                renaming = false;
+              }}
+            >
+              <div class="flex items-center gap-2">
+                <svg class="w-4 h-4 shrink-0 {selected?.id === col.id ? 'text-brand-500' : 'text-neutral-400'}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                <span class="flex-1 truncate text-[12.5px] font-medium">{col.name}</span>
+                <span class="text-[11px] font-mono text-neutral-400">{col.requests.length}</span>
               </div>
-            </div>
+            </button>
+          {:else}
+            <p class="px-3 py-6 text-center cp-muted">Nothing matches “{filter}”.</p>
+          {/each}
+        </div>
+      </div>
 
-            <div class="flex items-center gap-2 shrink-0">
-              <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500">{col.requests.length} req</span>
-              <span class="text-[11px] text-neutral-400 dark:text-neutral-500">{formatDate(col.createdAt)}</span>
-              <button
-                onclick={(e) => {
-                  e.stopPropagation();
-                  deleteCollection(col.id);
-                }}
-                class="p-1 text-neutral-300 dark:text-neutral-600 hover:text-rose-500 transition-colors"
-                title="Delete collection"
-                aria-label={`Delete ${col.name}`}
-              >
-                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-              <svg
-                class="w-4 h-4 text-neutral-400 transition-transform {expandedColId === col.id ? 'rotate-90' : ''}"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </div>
-
-          <!-- Expanded Requests -->
-          {#if expandedColId === col.id}
-            <div class="border-t border-neutral-200 dark:border-neutral-800 bg-neutral-50/50 dark:bg-neutral-950/30 p-3">
-              <div class="flex items-center justify-between mb-2">
-                <span class="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">
-                  Requests in this collection
-                </span>
-                <button
-                  onclick={() => addRequestToActiveCollection()}
-                  class="text-[11px] text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-0.5"
-                >
-                  <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-                  </svg>
-                  <span>Add current request</span>
-                </button>
-              </div>
-
-              {#if col.requests.length === 0}
-                <p class="text-xs text-neutral-400 dark:text-neutral-500 italic py-3 text-center">No requests in this collection yet.</p>
+      <!-- detail -->
+      {#if selected}
+        <div class="cp-card flex flex-col min-h-0 overflow-hidden">
+          <div class="flex items-start justify-between gap-3 px-4 py-3.5 border-b border-neutral-200 dark:border-neutral-800">
+            <div class="min-w-0">
+              {#if renaming}
+                <!-- svelte-ignore a11y_autofocus -->
+                <input
+                  autofocus
+                  class="cp-input !h-7 font-semibold"
+                  value={selected.name}
+                  onblur={(e) => {
+                    wb.renameCollection(selected.id, (e.target as HTMLInputElement).value.trim() || selected.name);
+                    renaming = false;
+                  }}
+                  onkeydown={(e) => {
+                    if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                    if (e.key === 'Escape') renaming = false;
+                  }}
+                />
               {:else}
-                <div class="space-y-1">
-                  {#each col.requests as req (req.id)}
-                    <button
-                      onclick={() => loadRequest(req)}
-                      class="w-full flex items-center justify-between px-3 py-2 bg-white dark:bg-neutral-900/80 border border-neutral-200 dark:border-neutral-800 rounded-lg text-left hover:border-indigo-300 dark:hover:border-indigo-700 transition-colors group"
-                    >
-                      <div class="flex items-center gap-2.5 min-w-0">
-                        <span
-                          class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded {req.method === 'GET'
-                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                            : req.method === 'POST'
-                            ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400'
-                            : req.method === 'DELETE'
-                            ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                            : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'}"
-                        >
-                          {req.method}
-                        </span>
-                        <span class="text-xs font-medium text-neutral-700 dark:text-neutral-300 truncate max-w-[200px]">{req.name || req.url}</span>
-                      </div>
-                      <span class="text-[11px] font-mono text-neutral-400 dark:text-neutral-500 truncate ml-3 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors shrink-0 max-w-[200px]">{req.url}</span>
-                    </button>
-                  {/each}
-                </div>
+                <h2 class="text-[14px] font-semibold text-neutral-900 dark:text-white truncate">{selected.name}</h2>
+              {/if}
+              <div class="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 cp-muted">
+                <span>{selected.requests.length} requests</span>
+                <span>{folderCount(selected)} folders</span>
+                <span>{selected.variables?.length ?? 0} variables</span>
+                {#if selected.auth && selected.auth.type !== 'none' && selected.auth.type !== 'inherit'}<span>Auth: {selected.auth.type}</span>{/if}
+                <span>Created {new Date(selected.createdAt).toLocaleDateString()}</span>
+              </div>
+              {#if selected.description}
+                <p class="mt-1.5 text-[12px] text-neutral-600 dark:text-neutral-400 line-clamp-2">{selected.description}</p>
               {/if}
             </div>
-          {/if}
-        </div>
-      {/each}
-    {/if}
-  </div>
-
-  <!-- New Collection Modal -->
-  {#if isModalOpen}
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div class="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-2xl space-y-3.5 text-xs text-neutral-800 dark:text-neutral-200">
-        <div class="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-800">
-          <h3 class="text-sm font-bold text-neutral-900 dark:text-white">New Collection</h3>
-          <button onclick={() => (isModalOpen = false)} class="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-white" aria-label="Close">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-2.5">
-          <div>
-            <label class="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Collection Name *</label>
-            <input
-              type="text"
-              bind:value={newColName}
-              placeholder="e.g. Internal APIs, Payment Endpoints"
-              class="w-full px-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+            <div class="flex items-center gap-1 shrink-0">
+              <button class="cp-btn cp-btn-sm" onclick={() => addRequest(selected)}>+ Request</button>
+              <button class="cp-btn cp-btn-sm" onclick={() => exportCollectionFile(selected.id)} title="Save as Postman Collection v2.1 (.json)">
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 0l-4 4m4-4l4 4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
+                Export
+              </button>
+              <button class="cp-icon-btn" title="Rename" aria-label="Rename collection" onclick={() => (renaming = true)}>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16v4z" /></svg>
+              </button>
+              <button class="cp-icon-btn hover:!text-rose-500" title="Delete" aria-label="Delete collection" onclick={() => remove(selected)}>
+                <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" /></svg>
+              </button>
+            </div>
           </div>
-          <div>
-            <label class="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Description (Optional)</label>
-            <input
-              type="text"
-              bind:value={newColDesc}
-              placeholder="Short description"
-              class="w-full px-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
+
+          <div class="flex-1 min-h-0 overflow-y-auto wb-scroll">
+            {#if groups.length === 0}
+              <div class="cp-empty">
+                <p class="cp-muted">{selected.requests.length ? 'No requests match the search.' : 'This collection has no requests yet.'}</p>
+                {#if !selected.requests.length}<button class="cp-btn cp-btn-sm mt-1" onclick={() => addRequest(selected)}>Add a request</button>{/if}
+              </div>
+            {/if}
+            {#each groups as g (g.path)}
+              {#if g.path}
+                <div class="sticky top-0 z-[1] flex items-center gap-1.5 px-4 h-8 bg-neutral-50 dark:bg-[#1d1d1d] border-b border-neutral-100 dark:border-neutral-800/70 text-[11.5px] font-medium text-neutral-500 dark:text-neutral-400">
+                  <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
+                  {g.path}
+                </div>
+              {/if}
+              {#each g.items as r (r.id)}
+                <button class="cp-row w-full text-left group" onclick={() => openRequest(r, selected)} title="Open in workbench">
+                  <span class="w-12 shrink-0 font-mono text-[11px] font-bold {methodText(r.method)}">{methodShort(r.method)}</span>
+                  <span class="w-56 shrink-0 truncate text-[12.5px] text-neutral-800 dark:text-neutral-200">{r.name}</span>
+                  <span class="flex-1 min-w-0 truncate font-mono text-[11.5px] text-neutral-400">{r.url}</span>
+                  <svg class="w-3.5 h-3.5 shrink-0 text-neutral-300 group-hover:text-brand-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5l7 7-7 7" /></svg>
+                </button>
+              {/each}
+            {/each}
           </div>
         </div>
-
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-          <button onclick={() => (isModalOpen = false)} class="px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-white rounded-lg transition-colors">
-            Cancel
-          </button>
-          <button
-            onclick={createCollection}
-            class="px-3.5 py-1.5 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 rounded-lg shadow-sm transition-colors"
-          >
-            Create Collection
-          </button>
-        </div>
-      </div>
+      {/if}
     </div>
   {/if}
 </div>
+
+{#if modalOpen}
+  <div class="wb-overlay" role="presentation" onclick={(e) => e.target === e.currentTarget && (modalOpen = false)}>
+    <div class="wb-modal w-full max-w-sm" role="dialog" aria-modal="true" aria-labelledby="new-col-title">
+      <div class="cp-card-head">
+        <h3 id="new-col-title" class="cp-card-title">New collection</h3>
+        <button class="cp-icon-btn" aria-label="Close" onclick={() => (modalOpen = false)}>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <form
+        class="cp-card-body space-y-3"
+        onsubmit={(e) => {
+          e.preventDefault();
+          create();
+        }}
+      >
+        <div>
+          <label class="cp-label" for="col-name">Name</label>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input id="col-name" class="cp-input" autofocus bind:value={newName} placeholder="e.g. Payment API" />
+        </div>
+        <div>
+          <label class="cp-label" for="col-desc">Description <span class="text-neutral-400 font-normal">(optional)</span></label>
+          <input id="col-desc" class="cp-input" bind:value={newDesc} placeholder="Short description" />
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" class="cp-btn cp-btn-ghost" onclick={() => (modalOpen = false)}>Cancel</button>
+          <button type="submit" class="cp-btn cp-btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}

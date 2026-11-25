@@ -81,6 +81,7 @@ const COMMANDS: &[&str] = &[
     "billing_start_trial",
     "billing_sign_out",
     "open_external_url",
+    "save_text_file",
 ];
 
 fn main() {

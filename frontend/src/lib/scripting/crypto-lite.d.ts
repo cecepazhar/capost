@@ -1,0 +1,14 @@
+export function utf8Bytes(str: string): number[];
+export function bytesToUtf8(bytes: number[]): string;
+export function bytesToHex(bytes: number[]): string;
+export function hexToBytes(hex: string): number[];
+export function bytesToBase64(bytes: number[]): string;
+export function base64ToBytes(str: string): number[];
+export function md5(bytes: number[]): number[];
+export function sha1(bytes: number[]): number[];
+export function sha256(bytes: number[]): number[];
+export function hmac(hashFn: (b: number[]) => number[], key: number[], msg: number[]): number[];
+export function md5Hex(str: string): string;
+export function aesEncrypt(data: number[], key: number[], iv: number[] | null, mode: 'CBC' | 'ECB', pkcs7?: boolean): number[];
+export function aesDecrypt(data: number[], key: number[], iv: number[] | null, mode: 'CBC' | 'ECB', pkcs7?: boolean): number[];
+export function evpBytesToKey(pass: number[], salt: number[], keyLen: number, ivLen: number): { key: number[]; iv: number[] };

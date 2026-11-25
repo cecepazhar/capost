@@ -249,3 +249,7 @@ export async function invoke_openExternalUrl(url: string): Promise<any> {
   return invoke('open_external_url', { url: url });
 }
 
+export async function invoke_saveTextFile(defaultName: string, contents: string): Promise<string | null> {
+  return invoke('save_text_file', { defaultName: defaultName, contents: contents });
+}
+

@@ -1,313 +1,238 @@
 <script lang="ts">
-  import { getWorkbench, type EnvironmentItem, type EnvironmentVariable } from '$lib/stores/workbench.svelte';
+  import { getWorkbench, type EnvironmentItem } from '$lib/stores/workbench.svelte';
   import { showToast } from '$lib/stores/uiNotifications.svelte';
+  import PageHead from '$lib/components/page/PageHead.svelte';
+  import { exportEnvironmentFile, importFromFiles } from '$lib/ui/transfer';
 
   const wb = getWorkbench();
-  let environments = $state(wb.environments);
-  let activeEnvId = $state(wb.activeEnvironmentId);
-  let selectedEnvId = $state(wb.activeEnvironmentId || wb.environments[0]?.id || null);
+  const environments = $derived(wb.environments);
+  const activeEnvId = $derived(wb.activeEnvironmentId);
 
-  let isNewModalOpen = $state(false);
-  let newEnvName = $state('');
-  let newEnvDesc = $state('');
+  /** 'globals' selects the workspace-wide globals; anything else is an environment id. */
+  let selectedId = $state<string>(wb.activeEnvironmentId || wb.environments[0]?.id || 'globals');
+  let modalOpen = $state(false);
+  let newName = $state('');
+  let reveal = $state(false);
 
-  const selectedEnv = $derived(
-    environments.find((e) => e.id === selectedEnvId) || environments[0] || null
-  );
+  const isGlobals = $derived(selectedId === 'globals');
+  const selectedEnv = $derived(isGlobals ? null : (environments.find((e) => e.id === selectedId) ?? null));
+  const rows = $derived(isGlobals ? wb.globals : (selectedEnv?.variables ?? []));
+  const looksSecret = (k: string) => /token|secret|password|pass|key|auth|cred/i.test(k);
 
+  function persist() {
+    if (isGlobals) wb.saveGlobals();
+    else if (selectedEnv) wb.saveEnvironment(selectedEnv);
+  }
   function setActive(id: string | null) {
-    activeEnvId = id;
     wb.setActiveEnvironment(id);
-    showToast(id ? 'Active environment updated' : 'Environment cleared', 'info');
+    showToast(id ? 'Active environment updated' : 'No environment active', 'info');
   }
-
-  function openNewModal() {
-    newEnvName = '';
-    newEnvDesc = '';
-    isNewModalOpen = true;
+  function create() {
+    if (!newName.trim()) return showToast('Environment name is required', 'error');
+    const env: EnvironmentItem = { id: crypto.randomUUID(), name: newName.trim(), variables: [{ id: crypto.randomUUID(), enabled: true, key: 'base_url', value: '' }] };
+    wb.saveEnvironment(env);
+    selectedId = env.id;
+    if (!wb.activeEnvironmentId) wb.setActiveEnvironment(env.id);
+    modalOpen = false;
+    showToast(`Environment "${env.name}" created`, 'success');
   }
-
-  function createEnvironment() {
-    if (!newEnvName.trim()) {
-      showToast('Environment name is required', 'error');
-      return;
-    }
-    const newEnv: EnvironmentItem = {
-      id: crypto.randomUUID(),
-      name: newEnvName.trim(),
-      description: newEnvDesc.trim() || undefined,
-      variables: [
-        { id: crypto.randomUUID(), enabled: true, key: 'base_url', value: 'https://api.example.com' },
-        { id: crypto.randomUUID(), enabled: true, key: 'token', value: 'secret_token_123' }
-      ]
-    };
-    wb.saveEnvironment(newEnv);
-    environments = wb.environments;
-    selectedEnvId = newEnv.id;
-    if (!activeEnvId) setActive(newEnv.id);
-    isNewModalOpen = false;
-    showToast(`Environment "${newEnv.name}" created`, 'success');
-  }
-
-  function deleteCurrentEnvironment() {
-    if (!selectedEnv) return;
-    const toDeleteId = selectedEnv.id;
-    wb.deleteEnvironment(toDeleteId);
-    environments = wb.environments;
-    selectedEnvId = environments[0]?.id || null;
-    activeEnvId = wb.activeEnvironmentId;
+  function remove() {
+    if (!selectedEnv || !confirm(`Delete environment "${selectedEnv.name}"?`)) return;
+    wb.deleteEnvironment(selectedEnv.id);
+    selectedId = wb.environments[0]?.id ?? 'globals';
     showToast('Environment deleted', 'info');
   }
-
   function addVariable() {
-    if (!selectedEnv) return;
-    selectedEnv.variables.push({
-      id: crypto.randomUUID(),
-      enabled: true,
-      key: '',
-      value: ''
-    });
-    wb.saveEnvironment(selectedEnv);
-    environments = wb.environments;
+    rows.push({ id: crypto.randomUUID(), enabled: true, key: '', value: '' });
+    persist();
   }
-
-  function removeVariable(varId: string) {
-    if (!selectedEnv) return;
-    selectedEnv.variables = selectedEnv.variables.filter((v) => v.id !== varId);
-    wb.saveEnvironment(selectedEnv);
-    environments = wb.environments;
+  function removeVariable(id: string) {
+    const i = rows.findIndex((v) => v.id === id);
+    if (i >= 0) rows.splice(i, 1);
+    persist();
   }
-
-  function updateVariable() {
-    if (!selectedEnv) return;
-    wb.saveEnvironment(selectedEnv);
-    environments = wb.environments;
+  async function doImport() {
+    const before = new Set(wb.environments.map((e) => e.id));
+    await importFromFiles('.json');
+    const added = wb.environments.find((e) => !before.has(e.id));
+    if (added) selectedId = added.id;
   }
 </script>
 
-<div class="flex flex-col h-full max-w-5xl mx-auto p-6 space-y-5">
-  <!-- Header -->
-  <div class="flex items-center justify-between">
-    <div>
-      <h1 class="text-lg font-bold text-neutral-900 dark:text-white">Environments</h1>
-      <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-        Manage variable sets and interpolate secrets in request URLs (e.g. <code class="font-mono bg-neutral-100 dark:bg-neutral-800 px-1 py-0.5 rounded text-[11px]">&#123;&#123;base_url&#125;&#125;</code>)
-      </p>
-    </div>
-    <div class="flex items-center gap-2">
-      <button
-        onclick={openNewModal}
-        class="px-3 py-1.5 bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 rounded-lg text-xs font-semibold text-white shadow-sm flex items-center gap-1.5 transition-colors"
-      >
-        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-        </svg>
-        <span>New Environment</span>
+<div class="cp-page h-full">
+  <PageHead title="Environments">
+    {#snippet meta()}
+      Variable sets referenced as <code class="font-mono text-[11.5px] px-1 py-0.5 rounded bg-neutral-100 dark:bg-white/[0.06]">&#123;&#123;name&#125;&#125;</code> in URLs, headers, bodies and scripts.
+    {/snippet}
+    {#snippet actions()}
+      <button class="cp-btn" onclick={doImport} title="Import Postman environment / globals (.json)">
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" /></svg>
+        Import
       </button>
-    </div>
-  </div>
+      <button
+        class="cp-btn cp-btn-primary"
+        onclick={() => {
+          newName = '';
+          modalOpen = true;
+        }}
+      >
+        <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14" /></svg>
+        New environment
+      </button>
+    {/snippet}
+  </PageHead>
 
-  <!-- Main Content: Left side env list, Right side variables editor -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-5 flex-1 min-h-[450px]">
-    <!-- Environments Sidebar -->
-    <div class="bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl p-3 space-y-2 flex flex-col">
-      <div class="flex items-center justify-between px-1 pb-1 border-b border-neutral-100 dark:border-neutral-800">
-        <span class="text-[11px] font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wide">Environment Sets</span>
+  <div class="grid grid-cols-1 md:grid-cols-[280px_minmax(0,1fr)] gap-5 flex-1 min-h-[420px]">
+    <!-- list -->
+    <div class="cp-card flex flex-col min-h-0 overflow-hidden">
+      <div class="flex-1 min-h-0 overflow-y-auto wb-scroll p-1.5 space-y-0.5">
         <button
-          onclick={() => setActive(null)}
-          class="text-[10px] text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300"
-          title="Deactivate all environments"
+          class="w-full text-left px-2.5 py-2 rounded-lg transition-colors {isGlobals ? 'bg-brand-500/10' : 'hover:bg-neutral-100 dark:hover:bg-white/[0.04]'}"
+          onclick={() => (selectedId = 'globals')}
         >
-          Clear Active
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 shrink-0 {isGlobals ? 'text-brand-500' : 'text-neutral-400'}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18" /></svg>
+            <span class="flex-1 truncate text-[12.5px] font-medium">Globals</span>
+            <span class="text-[11px] font-mono text-neutral-400">{wb.globals.length}</span>
+          </div>
         </button>
-      </div>
-
-      <div class="flex-1 overflow-y-auto space-y-1.5">
+        <div class="px-2.5 pt-3 pb-1 cp-eyebrow">Environments</div>
         {#each environments as env (env.id)}
           <div
             role="button"
             tabindex="0"
-            onclick={() => (selectedEnvId = env.id)}
-            onkeydown={(e) => e.key === 'Enter' && (selectedEnvId = env.id)}
-            class="w-full flex items-center justify-between p-2.5 rounded-lg border transition-all text-left cursor-pointer {selectedEnvId === env.id
-              ? 'bg-neutral-100 dark:bg-neutral-800 border-neutral-300 dark:border-neutral-600 shadow-2xs'
-              : 'border-transparent hover:bg-neutral-50 dark:hover:bg-neutral-800/40 text-neutral-600 dark:text-neutral-400'}"
+            class="group flex items-center gap-2 h-9 px-2.5 rounded-lg cursor-pointer transition-colors {selectedId === env.id ? 'bg-brand-500/10' : 'hover:bg-neutral-100 dark:hover:bg-white/[0.04]'}"
+            onclick={() => (selectedId = env.id)}
+            onkeydown={(e) => e.key === 'Enter' && (selectedId = env.id)}
           >
-            <div class="min-w-0 pr-2">
-              <div class="flex items-center gap-1.5">
-                <span class="text-xs font-semibold text-neutral-900 dark:text-white truncate">{env.name}</span>
-                {#if activeEnvId === env.id}
-                  <span class="px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[9px] font-bold">
-                    ACTIVE
-                  </span>
-                {/if}
-              </div>
-              <p class="text-[10px] text-neutral-400 dark:text-neutral-500 truncate mt-0.5">
-                {env.variables.length} vars · {env.description || 'Custom preset'}
-              </p>
-            </div>
-
+            <span class="w-2 h-2 rounded-full shrink-0 {activeEnvId === env.id ? 'bg-emerald-500' : 'bg-neutral-300 dark:bg-neutral-600'}" title={activeEnvId === env.id ? 'Active' : 'Inactive'}></span>
+            <span class="flex-1 truncate text-[12.5px] font-medium">{env.name}</span>
+            <span class="text-[11px] font-mono text-neutral-400 group-hover:hidden">{env.variables.length}</span>
             <button
-              type="button"
+              class="hidden group-hover:inline-flex cp-btn cp-btn-sm !h-6 !px-2 {activeEnvId === env.id ? '!text-emerald-600 dark:!text-emerald-400' : ''}"
               onclick={(e) => {
                 e.stopPropagation();
                 setActive(activeEnvId === env.id ? null : env.id);
-              }}
-              class="px-2 py-1 rounded text-[10px] font-semibold transition-colors {activeEnvId === env.id
-                ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                : 'bg-neutral-200 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-300 dark:hover:bg-neutral-600'}"
+              }}>{activeEnvId === env.id ? 'Active' : 'Use'}</button
             >
-              {activeEnvId === env.id ? 'Active' : 'Use'}
-            </button>
           </div>
+        {:else}
+          <p class="px-3 py-4 cp-muted">No environments yet.</p>
         {/each}
       </div>
     </div>
 
-    <!-- Variables Editor Pane -->
-    <div class="md:col-span-2 bg-white dark:bg-neutral-900/60 border border-neutral-200 dark:border-neutral-800 rounded-xl p-4 flex flex-col">
-      {#if selectedEnv}
-        <!-- Top bar of active environment -->
-        <div class="flex items-center justify-between pb-3 mb-3 border-b border-neutral-100 dark:border-neutral-800">
-          <div>
-            <h2 class="text-sm font-bold text-neutral-900 dark:text-white flex items-center gap-2">
-              <span>{selectedEnv.name}</span>
-              {#if activeEnvId === selectedEnv.id}
-                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Currently Active in Workbench"></span>
-              {/if}
-            </h2>
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
-              Variables defined here can be referenced in URL, Headers, and Body using <code class="font-mono text-neutral-700 dark:text-neutral-300">&#123;&#123;key&#125;&#125;</code>
-            </p>
-          </div>
-
-          <div class="flex items-center gap-2">
-            <button
-              onclick={addVariable}
-              class="px-2.5 py-1 text-xs font-semibold text-neutral-700 dark:text-neutral-300 bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700 rounded-lg border border-neutral-200 dark:border-neutral-700 flex items-center gap-1 transition-colors"
-            >
-              <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4" />
-              </svg>
-              <span>Add Variable</span>
-            </button>
-            <button
-              onclick={deleteCurrentEnvironment}
-              class="px-2.5 py-1 text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
-              title="Delete this environment"
-            >
-              Delete
-            </button>
-          </div>
+    <!-- editor -->
+    <div class="cp-card flex flex-col min-h-0 overflow-hidden">
+      <div class="flex items-center justify-between gap-3 px-4 py-3 border-b border-neutral-200 dark:border-neutral-800">
+        <div class="min-w-0">
+          <h2 class="flex items-center gap-2 text-[14px] font-semibold text-neutral-900 dark:text-white truncate">
+            {isGlobals ? 'Globals' : (selectedEnv?.name ?? 'No environment')}
+            {#if selectedEnv && activeEnvId === selectedEnv.id}
+              <span class="cp-pill bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 font-sans">Active</span>
+            {/if}
+          </h2>
+          <p class="cp-muted mt-0.5">{isGlobals ? 'Available to every request; collection and environment values override them.' : 'Overrides globals and collection variables while active.'}</p>
         </div>
-
-        <!-- Variables Table -->
-        <div class="flex-1 overflow-y-auto space-y-2">
-          {#if selectedEnv.variables.length === 0}
-            <p class="text-xs text-neutral-400 dark:text-neutral-500 italic py-6 text-center">
-              No variables in this environment. Click "Add Variable" above.
-            </p>
-          {:else}
-            <div class="space-y-1.5">
-              {#each selectedEnv.variables as v (v.id)}
-                <div class="flex items-center gap-2">
-                  <!-- Enabled toggle -->
-                  <input
-                    type="checkbox"
-                    bind:checked={v.enabled}
-                    onchange={updateVariable}
-                    class="w-3.5 h-3.5 rounded border-neutral-300 dark:border-neutral-600 accent-neutral-900 dark:accent-white"
-                  />
-
-                  <!-- Variable Key -->
-                  <input
-                    type="text"
-                    bind:value={v.key}
-                    oninput={updateVariable}
-                    placeholder="VARIABLE_NAME"
-                    class="w-2/5 px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
-                  />
-
-                  <!-- Variable Value -->
-                  <input
-                    type="text"
-                    bind:value={v.value}
-                    oninput={updateVariable}
-                    placeholder="value"
-                    class="flex-1 px-2.5 py-1.5 bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-xs font-mono text-neutral-900 dark:text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-1 focus:ring-neutral-400"
-                  />
-
-                  <!-- Delete -->
-                  <button
-                    onclick={() => removeVariable(v.id)}
-                    class="p-1 text-neutral-300 dark:text-neutral-600 hover:text-rose-500 transition-colors"
-                    title="Remove variable"
-                  >
-                    <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-              {/each}
-            </div>
+        <div class="flex items-center gap-1 shrink-0">
+          {#if selectedEnv}
+            <button class="cp-btn cp-btn-sm" onclick={() => setActive(activeEnvId === selectedEnv.id ? null : selectedEnv.id)}>
+              {activeEnvId === selectedEnv.id ? 'Deactivate' : 'Set active'}
+            </button>
+          {/if}
+          <button class="cp-btn cp-btn-sm" onclick={() => exportEnvironmentFile(isGlobals ? 'globals' : (selectedEnv?.id ?? ''))} disabled={!isGlobals && !selectedEnv} title="Save as Postman environment (.json)">Export</button>
+          <button class="cp-icon-btn" title={reveal ? 'Hide secret values' : 'Show secret values'} aria-label="Toggle secret values" onclick={() => (reveal = !reveal)}>
+            {#if reveal}
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M3 3l18 18M10.6 10.6a2 2 0 002.8 2.8M9.9 5.1A10 10 0 0121 12a10.4 10.4 0 01-2.2 3.2M6.6 6.6A10.4 10.4 0 003 12a10 10 0 0013.4 5.4" /></svg>
+            {:else}
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></svg>
+            {/if}
+          </button>
+          {#if selectedEnv}
+            <button class="cp-icon-btn hover:!text-rose-500" title="Delete environment" aria-label="Delete environment" onclick={remove}>
+              <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" /></svg>
+            </button>
           {/if}
         </div>
+      </div>
+
+      {#if isGlobals || selectedEnv}
+        <div class="flex-1 min-h-0 overflow-y-auto wb-scroll">
+          <table class="cp-table">
+            <thead>
+              <tr>
+                <th class="w-10 !px-0 text-center"><span class="sr-only">Enabled</span></th>
+                <th class="w-[38%]">Variable</th>
+                <th>Value</th>
+                <th class="w-10"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each rows as v (v.id)}
+                <tr class="group">
+                  <td class="!px-0 text-center">
+                    <input type="checkbox" class="accent-brand-600 w-3.5 h-3.5" bind:checked={v.enabled} onchange={persist} aria-label="Enabled" />
+                  </td>
+                  <td class="!py-1">
+                    <input class="cp-input !h-7 font-mono !border-transparent hover:!border-neutral-200 dark:hover:!border-neutral-700 focus:!border-brand-500/70 !bg-transparent" bind:value={v.key} oninput={persist} placeholder="variable_name" />
+                  </td>
+                  <td class="!py-1">
+                    <input
+                      class="cp-input !h-7 font-mono !border-transparent hover:!border-neutral-200 dark:hover:!border-neutral-700 focus:!border-brand-500/70 !bg-transparent"
+                      type={!reveal && looksSecret(v.key) ? 'password' : 'text'}
+                      bind:value={v.value}
+                      oninput={persist}
+                      placeholder="value"
+                    />
+                  </td>
+                  <td class="!px-1 text-center">
+                    <button class="cp-icon-btn opacity-0 group-hover:opacity-100 hover:!text-rose-500" aria-label="Remove variable" onclick={() => removeVariable(v.id)}>
+                      <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+          <div class="p-3">
+            <button class="cp-btn cp-btn-sm cp-btn-ghost !text-brand-600 dark:!text-brand-400" onclick={addVariable}>+ Add variable</button>
+          </div>
+        </div>
       {:else}
-        <div class="flex-1 flex items-center justify-center text-xs text-neutral-400">
-          No environment selected
+        <div class="cp-empty flex-1">
+          <p class="cp-muted">Create an environment to group variables such as <code class="font-mono">base_url</code> per stage.</p>
         </div>
       {/if}
     </div>
   </div>
-
-  <!-- New Environment Modal -->
-  {#if isNewModalOpen}
-    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-      <div class="w-full max-w-sm bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-2xl space-y-3.5 text-xs text-neutral-800 dark:text-neutral-200">
-        <div class="flex items-center justify-between pb-2 border-b border-neutral-200 dark:border-neutral-800">
-          <h3 class="text-sm font-bold text-neutral-900 dark:text-white">New Environment</h3>
-          <button onclick={() => (isNewModalOpen = false)} class="p-1 rounded text-neutral-400 hover:text-neutral-700 dark:hover:text-white">
-            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div class="space-y-2.5">
-          <div>
-            <label for="env-name" class="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Environment Name *</label>
-            <input
-              id="env-name"
-              type="text"
-              bind:value={newEnvName}
-              placeholder="e.g. Staging, Production, Local Docker"
-              class="w-full px-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-          <div>
-            <label for="env-desc" class="block text-[11px] font-semibold text-neutral-600 dark:text-neutral-400 mb-1">Description (Optional)</label>
-            <input
-              id="env-desc"
-              type="text"
-              bind:value={newEnvDesc}
-              placeholder="Short note"
-              class="w-full px-3 py-1.5 text-xs bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            />
-          </div>
-        </div>
-
-        <div class="flex items-center justify-end gap-2 pt-2 border-t border-neutral-200 dark:border-neutral-800">
-          <button onclick={() => (isNewModalOpen = false)} class="px-3 py-1.5 text-xs font-medium text-neutral-500 hover:text-neutral-800 dark:hover:text-white rounded-lg transition-colors">
-            Cancel
-          </button>
-          <button
-            onclick={createEnvironment}
-            class="px-3.5 py-1.5 text-xs font-semibold text-white bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-200 rounded-lg shadow-sm transition-colors"
-          >
-            Create
-          </button>
-        </div>
-      </div>
-    </div>
-  {/if}
 </div>
+
+{#if modalOpen}
+  <div class="wb-overlay" role="presentation" onclick={(e) => e.target === e.currentTarget && (modalOpen = false)}>
+    <div class="wb-modal w-full max-w-sm" role="dialog" aria-modal="true" aria-labelledby="new-env-title">
+      <div class="cp-card-head">
+        <h3 id="new-env-title" class="cp-card-title">New environment</h3>
+        <button class="cp-icon-btn" aria-label="Close" onclick={() => (modalOpen = false)}>
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M6 18L18 6M6 6l12 12" /></svg>
+        </button>
+      </div>
+      <form
+        class="cp-card-body space-y-3"
+        onsubmit={(e) => {
+          e.preventDefault();
+          create();
+        }}
+      >
+        <div>
+          <label class="cp-label" for="env-name">Name</label>
+          <!-- svelte-ignore a11y_autofocus -->
+          <input id="env-name" class="cp-input" autofocus bind:value={newName} placeholder="e.g. Staging" />
+        </div>
+        <div class="flex justify-end gap-2 pt-1">
+          <button type="button" class="cp-btn cp-btn-ghost" onclick={() => (modalOpen = false)}>Cancel</button>
+          <button type="submit" class="cp-btn cp-btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+{/if}

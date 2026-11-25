@@ -43,6 +43,9 @@ pub fn run_with_start(start: std::time::Instant) {
             use tauri::Manager;
             let _ = app.get_webview_window("main").map(|w| w.set_focus());
         }));
+        // Remembers size, position and maximized state between launches. The first launch
+        // falls back to tauri.conf.json (maximized + centered).
+        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
     }
 
     builder
@@ -171,6 +174,7 @@ pub fn run_with_start(start: std::time::Instant) {
             commands::billing_start_trial,
             commands::billing_sign_out,
             commands::open_external_url,
+            commands::save_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

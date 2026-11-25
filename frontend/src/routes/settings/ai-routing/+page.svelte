@@ -179,7 +179,7 @@
   }
 </script>
 
-<div class="max-w-6xl mx-auto space-y-6">
+<div class="cp-page">
   <PageHeader
     icon="M13 10V3L4 14h7v7l9-11h-7z"
     accent="sky"

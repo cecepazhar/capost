@@ -1,11 +1,10 @@
 <script lang="ts">
-  import { PageContainer, PageHeader } from '@cecepazhar/caui';
-  import { t } from '$lib/i18n/index.svelte';
-  import { getWorkbench, type CollectionItem, type WorkbenchRequest } from '$lib/stores/workbench.svelte';
+  import { getWorkbench } from '$lib/stores/workbench.svelte';
   import { isPro } from '$lib/stores/billing.svelte';
   import { proGate } from '$lib/stores/proGate.svelte';
   import { showToast } from '$lib/stores/uiNotifications.svelte';
-  import { invoke } from '@tauri-apps/api/core';
+  import PageHead from '$lib/components/page/PageHead.svelte';
+  import { methodText, methodShort, statusTone } from '$lib/ui/http';
 
   const wb = getWorkbench();
   let selectedCollectionId = $state<string>(wb.collections[0]?.id || '');
@@ -15,6 +14,7 @@
   let currentIteration = $state<number>(0);
   let totalSteps = $state<number>(0);
   let completedSteps = $state<number>(0);
+  let onlyFailed = $state(false);
 
   interface RunResult {
     iteration: number;
@@ -23,23 +23,23 @@
     status: number;
     latencyMs: number;
     passed: boolean;
+    testsPassed: number;
+    testsTotal: number;
+    error?: string;
   }
 
   let results = $state<RunResult[]>([]);
 
-  const selectedCollection = $derived(
-    wb.collections.find((c) => c.id === selectedCollectionId) || null
-  );
+  const selectedCollection = $derived(wb.collections.find((c) => c.id === selectedCollectionId) || null);
+  const FREE_MSG =
+    'Free plan dibatasi maksimal 10 iterasi per batch run. Dapatkan lisensi CAPost PRO untuk menjalankan batch runner tanpa batas dan integrasi CI/CD.';
 
   function handleIterationChange(e: Event) {
     const val = parseInt((e.target as HTMLInputElement).value) || 1;
     if (!$isPro && val > 10) {
       iterations = 10;
       showToast('Free tier dibatasi maksimal 10 iterasi. Upgrade ke PRO untuk iterasi tak terbatas.', 'info');
-      proGate.open(
-        'Unlimited Collection Runner',
-        'Free plan dibatasi maksimal 10 iterasi per batch run. Dapatkan lisensi CAPost PRO untuk menjalankan batch runner tanpa batas dan integrasi CI/CD.'
-      );
+      proGate.open('Unlimited Collection Runner', FREE_MSG);
     } else {
       iterations = Math.max(1, val);
     }
@@ -50,10 +50,7 @@
       showToast('Pilih koleksi yang memiliki setidaknya satu request', 'error');
       return;
     }
-
-    if (!$isPro && iterations > 10) {
-      iterations = 10;
-    }
+    if (!$isPro && iterations > 10) iterations = 10;
 
     isRunning = true;
     results = [];
@@ -65,46 +62,39 @@
       currentIteration = i;
       for (const req of selectedCollection.requests) {
         if (!isRunning) break;
-
         const start = performance.now();
-        let status = 200;
-        let passed = true;
-
+        let status = 0;
+        let passed = false;
+        let testsPassed = 0;
+        let testsTotal = 0;
+        let error: string | undefined;
         try {
-          const resp = await invoke<any>('http_send_request', {
-            payload: {
-              method: req.method,
-              url: req.url || 'https://httpbin.org/get',
-              headers: req.headers.filter((h) => h.enabled).map((h) => [h.key, h.value]),
-              body: req.body.type === 'raw-json' ? req.body.rawJson : null,
-              timeout_ms: 10000
-            }
-          });
-          status = resp.status_code || 200;
-          passed = status < 400;
-        } catch {
-          status = 500;
-          passed = false;
+          const r = await wb.runRequest(req, selectedCollection.id, i - 1);
+          status = r.response.status;
+          error = r.response.error ?? r.report.errors[0]?.message;
+          const counted = r.report.tests.filter((x) => !x.skipped);
+          testsTotal = counted.length;
+          testsPassed = counted.filter((x) => x.passed).length;
+          // Postman semantics: tests decide pass/fail; without tests, fall back to HTTP status.
+          passed = !r.response.error && r.report.errors.length === 0 && (testsTotal ? testsPassed === testsTotal : status > 0 && status < 400);
+        } catch (e: any) {
+          error = e?.message ?? String(e);
         }
-
-        const elapsed = Math.round(performance.now() - start);
-
         results.push({
           iteration: i,
-          requestName: req.name || 'Request',
+          requestName: [...(req.folder ?? []), req.name || 'Request'].join(' / '),
           method: req.method,
           status,
-          latencyMs: elapsed,
-          passed
+          latencyMs: Math.round(performance.now() - start),
+          passed,
+          testsPassed,
+          testsTotal,
+          error
         });
-
         completedSteps++;
-        if (delayMs > 0) {
-          await new Promise((r) => setTimeout(r, delayMs));
-        }
+        if (delayMs > 0) await new Promise((r) => setTimeout(r, delayMs));
       }
     }
-
     isRunning = false;
     showToast(`Runner selesai: ${completedSteps} request dieksekusi`, 'success');
   }
@@ -116,58 +106,31 @@
 
   const passedCount = $derived(results.filter((r) => r.passed).length);
   const failedCount = $derived(results.filter((r) => !r.passed).length);
-  const avgLatency = $derived(
-    results.length ? Math.round(results.reduce((acc, r) => acc + r.latencyMs, 0) / results.length) : 0
-  );
+  const avgLatency = $derived(results.length ? Math.round(results.reduce((acc, r) => acc + r.latencyMs, 0) / results.length) : 0);
+  const shown = $derived(onlyFailed ? results.filter((r) => !r.passed) : results);
+  const pct = $derived(totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0);
 </script>
 
-<PageContainer class="p-6 space-y-6 max-w-7xl mx-auto">
-  <div class="flex items-center justify-between">
-    <PageHeader
-      title={t('nav.runner')}
-      subtitle="Automated collection runner, iteration assertions and performance stats"
-      accent="indigo"
-    />
+<div class="cp-page">
+  <PageHead title="Collection Runner" subtitle="Run every request in a collection with its scripts and tests, for one or more iterations.">
+    {#snippet actions()}
+      {#if $isPro}
+        <span class="cp-pill !h-7 !px-2.5 bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 font-sans">★ PRO · unlimited iterations</span>
+      {:else}
+        <button class="cp-btn" onclick={() => proGate.open('Unlimited Batch Runner', FREE_MSG)}>
+          <span class="text-amber-500">●</span> Free · max 10 iterations
+          <span class="text-brand-600 dark:text-brand-400 font-semibold">Upgrade</span>
+        </button>
+      {/if}
+    {/snippet}
+  </PageHead>
 
-    <!-- Pro Limit Status Indicator -->
-    {#if $isPro}
-      <div class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.35)] select-none">
-        <span>★</span>
-        <span>PRO: Iterasi Tak Terbatas</span>
-      </div>
-    {:else}
-      <button
-        type="button"
-        onclick={() =>
-          proGate.open(
-            'Unlimited Batch Runner',
-            'Free plan dibatasi maksimal 10 iterasi per batch run. Dapatkan lisensi CAPost PRO untuk menjalankan batch runner tanpa batas dan integrasi CI/CD.'
-          )}
-        class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700/80 border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-300 transition-all cursor-pointer group"
-      >
-        <span class="text-amber-500">○</span>
-        <span>FREE: Maks 10 Iterasi</span>
-        <span class="text-[10px] font-bold uppercase px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30">
-          Upgrade
-        </span>
-      </button>
-    {/if}
-  </div>
-
-  <!-- Runner Setup Form -->
-  <div class="bg-white dark:bg-[#121217] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-xs space-y-5">
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <!-- Collection selector -->
+  <!-- Setup -->
+  <section class="cp-card">
+    <div class="cp-card-body grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] gap-4">
       <div>
-        <label for="runner-collection" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-          Collection
-        </label>
-        <select
-          id="runner-collection"
-          bind:value={selectedCollectionId}
-          disabled={isRunning}
-          class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-medium text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-        >
+        <label for="runner-collection" class="cp-label">Collection</label>
+        <select id="runner-collection" class="cp-input" bind:value={selectedCollectionId} disabled={isRunning}>
           {#each wb.collections as c (c.id)}
             <option value={c.id}>{c.name} ({c.requests.length} requests)</option>
           {/each}
@@ -176,164 +139,96 @@
           {/if}
         </select>
       </div>
-
-      <!-- Iterations input -->
       <div>
-        <div class="flex items-center justify-between mb-1.5">
-          <label for="runner-iterations" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300">
-            Iterations
-          </label>
-          {#if !$isPro}
-            <span class="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">Max 10 (Free Plan)</span>
-          {:else}
-            <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">Unlimited (PRO)</span>
-          {/if}
-        </div>
-        <div class="relative">
-          <input
-            id="runner-iterations"
-            type="number"
-            min="1"
-            max={!$isPro ? 10 : 10000}
-            value={iterations}
-            oninput={handleIterationChange}
-            disabled={isRunning}
-            class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-          />
-          {#if !$isPro && iterations >= 10}
-            <button
-              type="button"
-              onclick={() =>
-                proGate.open(
-                  'Unlimited Batch Runner',
-                  'Free plan dibatasi maksimal 10 iterasi per batch run. Dapatkan lisensi CAPost PRO untuk menjalankan batch runner tanpa batas dan integrasi CI/CD.'
-                )}
-              class="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
-            >
-              ★ Unlock &gt;10
-            </button>
-          {/if}
-        </div>
-      </div>
-
-      <!-- Delay input -->
-      <div>
-        <label for="runner-delay" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-          Delay per Request (ms)
+        <label for="runner-iterations" class="cp-label flex justify-between">
+          Iterations
+          <span class="font-normal {$isPro ? 'text-emerald-600 dark:text-emerald-400' : 'text-neutral-400'}">{$isPro ? 'Unlimited' : 'Max 10'}</span>
         </label>
-        <input
-          id="runner-delay"
-          type="number"
-          min="0"
-          step="50"
-          bind:value={delayMs}
-          disabled={isRunning}
-          class="w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-mono text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-        />
+        <input id="runner-iterations" type="number" min="1" max={!$isPro ? 10 : 10000} value={iterations} oninput={handleIterationChange} disabled={isRunning} class="cp-input font-mono" />
+      </div>
+      <div>
+        <label for="runner-delay" class="cp-label">Delay between requests (ms)</label>
+        <input id="runner-delay" type="number" min="0" step="50" bind:value={delayMs} disabled={isRunning} class="cp-input font-mono" />
       </div>
     </div>
-
-    <!-- Execution trigger -->
-    <div class="flex items-center justify-between pt-3 border-t border-neutral-100 dark:border-neutral-800">
-      <div class="text-xs text-neutral-500">
+    <div class="flex items-center justify-between gap-3 px-4 py-3 border-t border-neutral-200 dark:border-neutral-800">
+      <span class="cp-muted">
         {#if selectedCollection}
-          <span>Total Request: <strong class="text-neutral-900 dark:text-white">{selectedCollection.requests.length * iterations}</strong> eksekusi</span>
+          <strong class="text-neutral-900 dark:text-white tabular-nums">{selectedCollection.requests.length * iterations}</strong> requests will run
         {:else}
-          <span>Pilih koleksi untuk memulai</span>
+          Pilih koleksi untuk memulai
         {/if}
-      </div>
-
-      <div class="flex items-center gap-2">
-        {#if isRunning}
-          <button
-            type="button"
-            onclick={stopRunner}
-            class="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-rose-600 hover:bg-rose-500 transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
-          >
-            <span>■</span>
-            <span>Stop Runner</span>
-          </button>
-        {:else}
-          <button
-            type="button"
-            onclick={runBatch}
-            disabled={!selectedCollection || selectedCollection.requests.length === 0}
-            class="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-500 active:scale-95 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-          >
-            <span>▶</span>
-            <span>Run Collection</span>
-          </button>
-        {/if}
-      </div>
+      </span>
+      {#if isRunning}
+        <button class="cp-btn !bg-rose-600 !border-rose-600 !text-white hover:!bg-rose-500" onclick={stopRunner}>■ Stop</button>
+      {:else}
+        <button class="cp-btn cp-btn-primary" onclick={runBatch} disabled={!selectedCollection || selectedCollection.requests.length === 0}>▶ Run collection</button>
+      {/if}
     </div>
-  </div>
+  </section>
 
-  <!-- Progress bar -->
   {#if isRunning || results.length > 0}
-    <div class="bg-white dark:bg-[#121217] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-5 shadow-xs space-y-4">
-      <div class="flex items-center justify-between text-xs">
-        <span class="font-semibold text-neutral-900 dark:text-white">
-          Progress: {completedSteps} / {totalSteps} requests ({totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0}%)
-        </span>
-        <span class="font-mono text-neutral-500">Iteration {currentIteration} of {iterations}</span>
-      </div>
+    <!-- Summary -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      {#each [
+        { k: 'Executed', v: `${completedSteps}/${totalSteps}`, cls: '' },
+        { k: 'Passed', v: String(passedCount), cls: 'text-emerald-600 dark:text-emerald-400' },
+        { k: 'Failed', v: String(failedCount), cls: failedCount ? 'text-rose-600 dark:text-rose-400' : '' },
+        { k: 'Avg latency', v: `${avgLatency} ms`, cls: '' }
+      ] as s (s.k)}
+        <div class="cp-card px-4 py-3.5">
+          <div class="cp-eyebrow">{s.k}</div>
+          <div class="mt-1.5 text-[22px] leading-none font-semibold tabular-nums text-neutral-900 dark:text-white {s.cls}">{s.v}</div>
+        </div>
+      {/each}
+    </div>
 
-      <div class="w-full h-2 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
-        <div
-          class="h-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-200"
-          style="width: {totalSteps ? (completedSteps / totalSteps) * 100 : 0}%"
-        ></div>
+    <!-- Results -->
+    <section class="cp-card overflow-hidden">
+      <div class="cp-card-head">
+        <div class="flex items-center gap-3 min-w-0">
+          <h2 class="cp-card-title">Results</h2>
+          <span class="cp-muted">Iteration {currentIteration} of {iterations} · {pct}%</span>
+        </div>
+        <label class="flex items-center gap-1.5 cp-muted cursor-pointer">
+          <input type="checkbox" class="accent-brand-600" bind:checked={onlyFailed} /> Failed only
+        </label>
       </div>
-
-      <!-- Stats Summary -->
-      <div class="grid grid-cols-4 gap-3 pt-2 text-center text-xs">
-        <div class="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-          <div class="text-[11px] text-neutral-400">Total</div>
-          <div class="text-sm font-bold font-mono text-neutral-900 dark:text-white">{results.length}</div>
-        </div>
-        <div class="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-          <div class="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">Passed</div>
-          <div class="text-sm font-bold font-mono text-emerald-600 dark:text-emerald-400">{passedCount}</div>
-        </div>
-        <div class="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20">
-          <div class="text-[11px] text-rose-600 dark:text-rose-400 font-semibold">Failed</div>
-          <div class="text-sm font-bold font-mono text-rose-600 dark:text-rose-400">{failedCount}</div>
-        </div>
-        <div class="p-2.5 rounded-xl bg-neutral-50 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-          <div class="text-[11px] text-neutral-400">Avg Latency</div>
-          <div class="text-sm font-bold font-mono text-neutral-900 dark:text-white">{avgLatency} ms</div>
-        </div>
+      <div class="h-1 bg-neutral-100 dark:bg-white/[0.05]">
+        <div class="h-full bg-brand-500 transition-all duration-200" style="width:{pct}%"></div>
       </div>
-
-      <!-- Results Table -->
-      <div class="max-h-72 overflow-y-auto border border-neutral-200 dark:border-neutral-800 rounded-xl">
-        <table class="w-full text-xs">
-          <thead class="bg-neutral-50 dark:bg-neutral-900/80 sticky top-0 border-b border-neutral-200 dark:border-neutral-800 text-neutral-500">
+      <div class="max-h-[420px] overflow-y-auto wb-scroll">
+        <table class="cp-table">
+          <thead class="sticky top-0 z-[1]">
             <tr>
-              <th class="py-2 px-3 text-left">Iter</th>
-              <th class="py-2 px-3 text-left">Method</th>
-              <th class="py-2 px-3 text-left">Request</th>
-              <th class="py-2 px-3 text-left">Status</th>
-              <th class="py-2 px-3 text-left">Latency</th>
-              <th class="py-2 px-3 text-left">Result</th>
+              <th class="w-14">Iter</th>
+              <th class="w-16">Method</th>
+              <th>Request</th>
+              <th class="w-20">Status</th>
+              <th class="w-24 text-right">Latency</th>
+              <th class="w-20 text-right">Tests</th>
+              <th class="w-20 text-right">Result</th>
             </tr>
           </thead>
-          <tbody class="divide-y divide-neutral-100 dark:divide-neutral-800/60 font-mono text-[11px]">
-            {#each results as r, idx (idx)}
-              <tr class="hover:bg-neutral-50 dark:hover:bg-neutral-900/40">
-                <td class="py-1.5 px-3 text-neutral-400">#{r.iteration}</td>
-                <td class="py-1.5 px-3 font-bold">{r.method}</td>
-                <td class="py-1.5 px-3 font-sans truncate max-w-[200px] text-neutral-800 dark:text-neutral-200">{r.requestName}</td>
-                <td class="py-1.5 px-3 font-bold {r.status < 400 ? 'text-emerald-500' : 'text-rose-500'}">{r.status}</td>
-                <td class="py-1.5 px-3 text-neutral-500">{r.latencyMs} ms</td>
-                <td class="py-1.5 px-3 font-bold {r.passed ? 'text-emerald-500' : 'text-rose-500'}">
-                  {r.passed ? 'PASS' : 'FAIL'}
+          <tbody>
+            {#each shown as r, idx (idx)}
+              <tr>
+                <td class="font-mono text-[11.5px] text-neutral-400">#{r.iteration}</td>
+                <td class="font-mono text-[11px] font-bold {methodText(r.method)}">{methodShort(r.method)}</td>
+                <td class="max-w-0"><div class="truncate text-neutral-800 dark:text-neutral-200" title={r.error ?? r.requestName}>{r.requestName}</div></td>
+                <td><span class="cp-pill {statusTone(r.status)}">{r.status || 'ERR'}</span></td>
+                <td class="text-right font-mono text-[11.5px] text-neutral-500">{r.latencyMs} ms</td>
+                <td class="text-right font-mono text-[11.5px] {r.testsTotal && r.testsPassed < r.testsTotal ? 'text-rose-500' : 'text-neutral-500'}" title={r.error ?? ''}>
+                  {r.testsTotal ? `${r.testsPassed}/${r.testsTotal}` : r.error ? 'error' : '—'}
+                </td>
+                <td class="text-right">
+                  <span class="cp-pill font-sans {r.passed ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/12 text-rose-600 dark:text-rose-400'}">{r.passed ? 'PASS' : 'FAIL'}</span>
                 </td>
               </tr>
             {/each}
           </tbody>
         </table>
       </div>
-    </div>
+    </section>
   {/if}
-</PageContainer>
+</div>

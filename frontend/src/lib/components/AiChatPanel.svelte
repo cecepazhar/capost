@@ -178,7 +178,7 @@
   <div class="fixed bottom-4 right-4 z-50 animate-in fade-in duration-150">
     <button
       onclick={() => (isMinimized = false)}
-      class="flex items-center gap-2 px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white shadow-xl shadow-indigo-600/30 font-medium text-xs border border-indigo-400/30 transition-transform hover:scale-105 cursor-pointer"
+      class="flex items-center gap-2 px-3.5 py-2 rounded-full bg-brand-600 hover:bg-brand-500 text-white shadow-xl shadow-brand-600/30 font-medium text-xs border border-brand-400/30 transition-transform hover:scale-105 cursor-pointer"
     >
       <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
       <span>Asisten AI Aktif</span>
@@ -198,7 +198,7 @@
     <!-- Header -->
     <header class="px-4 py-3 border-b border-neutral-800/80 bg-neutral-950/60 flex items-center justify-between select-none shrink-0">
       <div class="flex items-center gap-2 min-w-0">
-        <div class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-sm shadow-indigo-500/50 shrink-0"></div>
+        <div class="w-2.5 h-2.5 rounded-full bg-brand-500 shadow-sm shadow-brand-500/50 shrink-0"></div>
         <div class="min-w-0">
           <h3 class="text-xs font-bold text-white tracking-wide truncate">Asisten AI Copilot</h3>
         </div>
@@ -293,7 +293,7 @@
         <div class="flex flex-col {msg.role === 'user' ? 'items-end' : 'items-start'}">
           <div
             class="max-w-[88%] rounded-2xl px-3.5 py-2.5 {msg.role === 'user'
-              ? 'bg-indigo-600 text-white rounded-br-none shadow-md shadow-indigo-600/20'
+              ? 'bg-brand-600 text-white rounded-br-none shadow-md shadow-brand-600/20'
               : 'bg-neutral-800/90 text-neutral-200 rounded-bl-none border border-neutral-700/60'}"
           >
             {cleanMessageContent(msg.content)}
@@ -309,7 +309,7 @@
             <button
               onclick={executeAll}
               disabled={isExecuting}
-              class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-sm"
+              class="px-2.5 py-1 rounded-lg bg-brand-600 hover:bg-brand-500 disabled:opacity-50 text-white text-xs font-bold transition-all shadow-sm"
             >
               {isExecuting ? 'Menjalankan...' : 'Jalankan Semua'}
             </button>
@@ -321,7 +321,7 @@
                 <input
                   type="checkbox"
                   bind:checked={acceptedSteps[i]}
-                  class="mt-0.5 rounded border-neutral-700 text-indigo-600 focus:ring-0"
+                  class="mt-0.5 rounded border-neutral-700 text-brand-600 focus:ring-0"
                 />
                 <div class="flex-1 min-w-0">
                   <div class="font-medium text-neutral-200">{step.title}</div>
@@ -342,8 +342,8 @@
 
       <!-- AI Disabled Warning -->
       {#if aiDisabledWarning}
-        <div class="p-3.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 flex flex-col gap-2">
-          <div class="flex items-center gap-2 text-indigo-400 font-semibold text-xs">
+        <div class="p-3.5 rounded-xl bg-brand-500/10 border border-brand-500/30 flex flex-col gap-2">
+          <div class="flex items-center gap-2 text-brand-400 font-semibold text-xs">
             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
@@ -356,7 +356,7 @@
               onClose();
               goto('/settings?tab=ai');
             }}
-            class="w-full py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-md shadow-indigo-600/20 transition-all text-center"
+            class="w-full py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-semibold text-xs shadow-md shadow-brand-600/20 transition-all text-center"
           >
             Buka Pengaturan AI
           </button>
@@ -365,7 +365,7 @@
 
       {#if isSending}
         <div class="flex items-center gap-2 text-neutral-400 text-xs py-2">
-          <svg class="w-3.5 h-3.5 animate-spin text-indigo-400" fill="none" viewBox="0 0 24 24">
+          <svg class="w-3.5 h-3.5 animate-spin text-brand-400" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -387,12 +387,12 @@
           type="text"
           bind:value={draft}
           placeholder={"Tanyakan sesuatu atau berikan perintah..."}
-          class="flex-1 px-3.5 py-2 bg-neutral-900 border border-neutral-700/70 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-indigo-500 transition-colors"
+          class="flex-1 px-3.5 py-2 bg-neutral-900 border border-neutral-700/70 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-brand-500 transition-colors"
         />
         <button
           type="submit"
           disabled={isSending || !draft.trim()}
-          class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-indigo-600/20 shrink-0"
+          class="px-3.5 py-2 bg-brand-600 hover:bg-brand-500 disabled:opacity-40 text-white text-xs font-semibold rounded-xl transition-all shadow-md shadow-brand-600/20 shrink-0"
         >
           Kirim
         </button>

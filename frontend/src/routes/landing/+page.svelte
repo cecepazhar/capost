@@ -45,7 +45,7 @@
     </div>
 
     <h1 class="text-4xl sm:text-6xl font-black tracking-tight leading-tight">
-      Sovereign Software for <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-indigo-500">Autonomous Thinkers</span>
+      Sovereign Software for <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-brand-500">Autonomous Thinkers</span>
     </h1>
 
     <p class="text-sm sm:text-base text-[var(--ca-text-muted)] max-w-2xl mx-auto leading-relaxed">
@@ -53,7 +53,7 @@
     </p>
 
     <div class="flex flex-wrap items-center justify-center gap-3 pt-4">
-      <Button variant="primary" size="lg" class="shadow-lg shadow-indigo-500/20">
+      <Button variant="primary" size="lg" class="shadow-lg shadow-brand-500/20">
         Download Latest Release (.apk / desktop)
       </Button>
       <Button variant="outline" size="lg" href="/docs">
@@ -81,7 +81,7 @@
       </Card>
 
       <Card class="p-6 space-y-3">
-        <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-500 flex items-center justify-center font-bold text-lg">
+        <div class="w-10 h-10 rounded-xl bg-brand-500/10 text-brand-500 flex items-center justify-center font-bold text-lg">
           ⚡
         </div>
         <h3 class="font-bold text-sm text-[var(--ca-text-primary)]">Svelte 5 Runes & Rust</h3>
@@ -125,7 +125,7 @@
         <Button variant="outline" class="w-full">Get Started</Button>
       </Card>
 
-      <Card class="p-6 space-y-4 border-[var(--ca-brand)] shadow-lg shadow-indigo-500/10">
+      <Card class="p-6 space-y-4 border-[var(--ca-brand)] shadow-lg shadow-brand-500/10">
         <div>
           <Badge variant="primary">FOUNDER LIFETIME</Badge>
           <div class="mt-2 text-2xl font-bold">Rp 149.000 <span class="text-xs text-emerald-500 font-normal">Promo Rp 79.000</span></div>

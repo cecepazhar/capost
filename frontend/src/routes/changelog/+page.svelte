@@ -67,7 +67,7 @@
   }
 </script>
 
-<PageContainer class="p-6 space-y-6 max-w-4xl mx-auto">
+<PageContainer class="cp-page !max-w-4xl">
   <PageHeader
     title={'Changelog & Release Notes'}
     subtitle={'Chronological audit of new features, performance enhancements, and security updates.'}
@@ -87,7 +87,7 @@
     {#each releases as rel}
       <div class="relative space-y-3">
         <!-- Dot marker -->
-        <span class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--ca-surface-base)] {rel.isLatest ? 'bg-[var(--ca-brand)] ring-4 ring-indigo-500/20' : 'bg-[var(--ca-border)]'}"></span>
+        <span class="absolute -left-6 top-1.5 w-3.5 h-3.5 rounded-full border-2 border-[var(--ca-surface-base)] {rel.isLatest ? 'bg-[var(--ca-brand)] ring-4 ring-brand-500/20' : 'bg-[var(--ca-border)]'}"></span>
 
         <!-- Version Header -->
         <div class="flex items-center gap-3">

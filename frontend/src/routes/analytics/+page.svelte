@@ -26,7 +26,7 @@
   ];
 </script>
 
-<PageContainer class="p-6 space-y-6 max-w-7xl mx-auto">
+<PageContainer class="cp-page">
   <PageHeader
     title={'Visual Metrics & Analytics Archetype'}
     subtitle={'High-fidelity data visualization built using CAUI progress bars, ring gauges, and skeleton loaders.'}

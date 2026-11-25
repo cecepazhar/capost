@@ -14,6 +14,22 @@ button, input, textarea, a, select, [role="button"], .no-drag {
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Brand accent = the app icon's cyan arrow (#38BDF8 is brand-400). Use `brand-*` everywhere
+   instead of a stock palette so every screen, button and focus ring shares one accent. */
+@theme {
+  --color-brand-50: #f0f9ff;
+  --color-brand-100: #e0f2fe;
+  --color-brand-200: #bae6fd;
+  --color-brand-300: #7dd3fc;
+  --color-brand-400: #38bdf8;
+  --color-brand-500: #0ea5e9;
+  --color-brand-600: #0284c7;
+  --color-brand-700: #0369a1;
+  --color-brand-800: #075985;
+  --color-brand-900: #0c4a6e;
+  --color-brand-950: #082f49;
+}
+
 /* Scrollable but without a visible bar (session tab strip, sidebar nav). */
 @utility scrollbar-none {
   scrollbar-width: none;
@@ -59,4 +75,70 @@ html.dark {
     linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
   background-size: 28px 28px;
+}
+
+/* ---------------- Request workbench ---------------- */
+@layer components {
+  .wb-icon { @apply h-7 w-7 shrink-0 inline-flex items-center justify-center rounded-md text-neutral-500 hover:text-neutral-900 hover:bg-neutral-200/70 dark:hover:text-white dark:hover:bg-white/[0.07] transition-colors duration-150; }
+  .wb-mini { @apply h-6 w-6 inline-flex items-center justify-center rounded text-neutral-400 hover:text-neutral-800 dark:hover:text-white hover:bg-neutral-300/50 dark:hover:bg-white/10 transition-colors duration-150; }
+  .wb-link { @apply text-[11.5px] text-neutral-500 hover:text-brand-600 dark:hover:text-brand-400 transition-colors duration-150; }
+  .wb-tabs { @apply flex items-center h-9 shrink-0 px-2 gap-0.5 border-b border-neutral-200 dark:border-neutral-800; }
+  .wb-tab { @apply relative h-9 px-2.5 inline-flex items-center gap-1.5 text-[12px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-colors duration-150; }
+  .wb-tab.is-active { @apply text-neutral-900 dark:text-white; }
+  .wb-tab.is-active::after { content: ''; @apply absolute left-2 right-2 -bottom-px h-[2px] rounded-full bg-brand-500; }
+  .wb-seg { @apply inline-flex items-center gap-0.5 p-0.5 rounded-lg bg-neutral-100 dark:bg-white/[0.05]; }
+  .wb-seg > button { @apply h-6 px-2.5 rounded-md text-[11.5px] text-neutral-500 hover:text-neutral-900 dark:hover:text-white transition-all duration-150; }
+  .wb-seg > button.is-active { @apply bg-white dark:bg-white/[0.12] text-neutral-900 dark:text-white shadow-sm; }
+  .wb-field { @apply flex flex-col gap-1.5 text-[11.5px] text-neutral-500; }
+  .wb-input { @apply h-8 px-2.5 rounded-md border border-neutral-200 dark:border-neutral-800 bg-transparent font-mono text-[12.5px] text-neutral-900 dark:text-neutral-100 outline-none focus:border-brand-500/60 focus:ring-2 focus:ring-brand-500/15 transition-shadow; }
+  .wb-kbd { @apply px-1.5 py-0.5 rounded border border-neutral-200 dark:border-neutral-700 font-mono text-[10.5px] text-neutral-500; }
+  .wb-pop { @apply rounded-lg border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#1c1c1c] shadow-xl; animation: wb-pop-in 120ms ease-out; }
+  .wb-menu-item { @apply w-full text-left px-2 py-1.5 rounded-md text-[12.5px] truncate hover:bg-neutral-100 dark:hover:bg-white/[0.06] transition-colors; }
+  .wb-overlay { @apply fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-[2px]; animation: wb-fade 120ms ease-out; }
+  .wb-modal { @apply rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#1a1a1a] shadow-2xl overflow-hidden; animation: wb-pop-in 160ms cubic-bezier(.2,.9,.3,1.2); }
+  .wb-btn { @apply h-8 px-3 rounded-md text-[12px] font-medium border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-100 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors; }
+  .wb-btn-primary { @apply bg-brand-600 border-brand-600 text-white hover:bg-brand-500; }
+  .wb-scroll { scrollbar-width: thin; scrollbar-color: rgb(127 127 127 / .3) transparent; overscroll-behavior: contain; }
+  .wb-scroll-x { scrollbar-width: none; }
+  .wb-scroll-x::-webkit-scrollbar { display: none; }
+  .wb-progress { animation: wb-progress 1s ease-in-out infinite; }
+
+  /* ---------- Shared page kit (Dashboard, Collections, Environments, Runner, History…) ----------
+     One scale for every non-workbench screen: 24px page gutter, 20px section gap,
+     rounded-xl cards with 16px padding, 32px-high controls, 12px UI text. */
+  .cp-page { @apply mx-auto w-full max-w-6xl px-6 py-6 flex flex-col gap-5; }
+  .cp-page-head { @apply flex flex-wrap items-end justify-between gap-3; }
+  .cp-title { @apply text-[18px] font-semibold tracking-tight text-neutral-900 dark:text-white; }
+  .cp-subtitle { @apply mt-1 text-[12.5px] text-neutral-500 dark:text-neutral-400; }
+  .cp-card { @apply rounded-xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-[#1a1a1a]; }
+  .cp-card-head { @apply flex items-center justify-between gap-3 px-4 h-11 border-b border-neutral-200 dark:border-neutral-800; }
+  .cp-card-title { @apply text-[12.5px] font-semibold text-neutral-800 dark:text-neutral-100; }
+  .cp-card-body { @apply p-4; }
+  .cp-eyebrow { @apply text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400; }
+  .cp-muted { @apply text-[12px] text-neutral-500 dark:text-neutral-400; }
+  .cp-btn { @apply h-8 px-3 inline-flex items-center justify-center gap-1.5 rounded-md text-[12px] font-medium whitespace-nowrap border border-neutral-200 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 bg-white dark:bg-transparent hover:bg-neutral-100 dark:hover:bg-white/[0.06] disabled:opacity-40 disabled:pointer-events-none transition-colors; }
+  .cp-btn-primary { @apply bg-brand-600 border-brand-600 text-white hover:bg-brand-500 hover:border-brand-500 dark:bg-brand-600 dark:hover:bg-brand-500; }
+  .cp-btn-ghost { @apply border-transparent bg-transparent; }
+  .cp-btn-danger { @apply border-transparent bg-transparent text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 dark:hover:bg-rose-500/10; }
+  .cp-btn-sm { @apply h-7 px-2.5 text-[11.5px]; }
+  .cp-icon-btn { @apply h-7 w-7 inline-flex items-center justify-center rounded-md text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-100 dark:hover:bg-white/[0.07] transition-colors; }
+  .cp-input { @apply h-8 w-full px-2.5 rounded-md border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-white/[0.03] text-[12.5px] text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 outline-none focus:border-brand-500/70 focus:ring-2 focus:ring-brand-500/20 transition-shadow disabled:opacity-50; }
+  .cp-label { @apply block mb-1.5 text-[11.5px] font-medium text-neutral-600 dark:text-neutral-400; }
+  .cp-pill { @apply inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10.5px] font-semibold font-mono; }
+  .cp-row { @apply flex items-center gap-3 px-4 py-2.5 border-b last:border-b-0 border-neutral-100 dark:border-neutral-800/70 hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors; }
+  .cp-table { @apply w-full text-left text-[12px]; }
+  .cp-table th { @apply h-9 px-4 text-[11px] font-medium uppercase tracking-wider text-neutral-500 dark:text-neutral-400 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50/70 dark:bg-white/[0.02]; }
+  .cp-table td { @apply h-10 px-4 border-b border-neutral-100 dark:border-neutral-800/70; }
+  .cp-table tbody tr { @apply hover:bg-neutral-50 dark:hover:bg-white/[0.03] transition-colors; }
+  .cp-table tbody tr:last-child td { @apply border-b-0; }
+  .cp-empty { @apply flex flex-col items-center justify-center text-center gap-2 py-14 px-6; }
+  .cp-empty-icon { @apply h-11 w-11 rounded-xl flex items-center justify-center bg-neutral-100 dark:bg-white/[0.05] text-neutral-400; }
+}
+
+@keyframes wb-fade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes wb-pop-in { from { opacity: 0; transform: translateY(4px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes wb-progress { from { transform: translateX(-100%) } to { transform: translateX(300%) } }
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-pop, .wb-overlay, .wb-modal, .wb-progress { animation: none; }
 }

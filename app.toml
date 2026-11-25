@@ -2,7 +2,7 @@
 name = "CAPost"
 slug = "capost"
 bundle_id = "com.fathforce.capost"
-version = "1.0.1"
+version = "1.0.3"
 accent_color = "indigo"
 error_prefix = "CAPOST"
 description = "Zero-Knowledge AI-Native API Studio & Workbench for modern backend and QA engineers"
@@ -64,13 +64,6 @@ label = "Runner"
 href = "/runner"
 icon = "monitoring"
 description = "Automated collection runner, iteration assertions and performance stats"
-
-[[menus]]
-key = "mock"
-label = "Mock Server"
-href = "/mock"
-icon = "code"
-description = "Local API mock server generated from JSON schema"
 
 [[menus]]
 key = "history"
