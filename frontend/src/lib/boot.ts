@@ -5,7 +5,13 @@
 const MIN_MS = 1000;
 const MAX_MS = 2800;
 
-type BootApi = { start: number; step: (text: string, pct?: number) => void; done: () => void };
+type BootApi = { start: number; lang?: string; step: (text: string, pct?: number) => void; done: () => void };
+
+// The splash runs before i18n is loaded, so its few lines are kept here.
+const STEPS = {
+  en: { workspace: 'Loading workspace…', editor: 'Preparing editor…', fonts: 'Loading fonts…', ready: 'Ready' },
+  id: { workspace: 'Memuat workspace…', editor: 'Menyiapkan editor…', fonts: 'Memuat font…', ready: 'Siap' }
+};
 const api = (): BootApi | undefined => (typeof window !== 'undefined' ? (window as any).__capostBoot : undefined);
 
 // rAF never fires while the window is hidden/occluded, so cap the wait.
@@ -15,12 +21,13 @@ const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 const settle = (p: Promise<unknown>) => p.then(() => undefined, () => undefined);
 
 /** Warm-up work that makes the first interactions instant; each step is best-effort. */
-async function warmUp(step: BootApi['step']) {
-  step('Loading workspace…', 35);
+async function warmUp(step: BootApi['step'], lang?: string) {
+  const s = lang === 'id' ? STEPS.id : STEPS.en;
+  step(s.workspace, 35);
   // Touch the workbench store so collections/environments/history are parsed now.
   await settle(import('$lib/stores/workbench.svelte').then((m) => m.getWorkbench()));
 
-  step('Preparing editor…', 60);
+  step(s.editor, 60);
   await settle(
     Promise.all([
       import('@codemirror/view'),
@@ -31,10 +38,10 @@ async function warmUp(step: BootApi['step']) {
     ])
   );
 
-  step('Loading fonts…', 80);
+  step(s.fonts, 80);
   if (document.fonts?.ready) await Promise.race([settle(document.fonts.ready), sleep(400)]);
 
-  step('Ready', 95);
+  step(s.ready, 95);
   await frame(); // let the real UI paint underneath before the splash fades
 }
 
@@ -44,7 +51,7 @@ export async function finishBoot(): Promise<void> {
   const boot = api();
   if (!boot || finished) return;
   finished = true;
-  await Promise.race([warmUp(boot.step), sleep(MAX_MS)]);
+  await Promise.race([warmUp(boot.step, boot.lang), sleep(MAX_MS)]);
   const elapsed = performance.now() - boot.start;
   if (elapsed < MIN_MS) await sleep(MIN_MS - elapsed);
   boot.done();

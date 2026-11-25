@@ -18,6 +18,21 @@ export function isDark(): boolean {
 function applyToDocument(name: ThemeName) {
   if (typeof document === 'undefined') return;
   document.documentElement.classList.toggle('dark', name === 'dark');
+  syncWindowBackground(name);
+}
+
+/** The native window/WebView background shows through while the window is being resized or
+ *  maximized, before the page repaints. Match it to the theme so light mode never flashes the
+ *  dark startup colour. Silently does nothing outside Tauri. */
+function syncWindowBackground(name: ThemeName) {
+  if (!(typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window)) return;
+  const color = name === 'dark' ? '#0e0e0e' : '#f5f5f5';
+  import('@tauri-apps/api/window')
+    .then(({ getCurrentWindow }) => getCurrentWindow().setBackgroundColor(color))
+    .catch(() => {});
+  import('@tauri-apps/api/webview')
+    .then(({ getCurrentWebview }) => getCurrentWebview().setBackgroundColor(color))
+    .catch(() => {});
 }
 
 export function setTheme(name: ThemeName) {

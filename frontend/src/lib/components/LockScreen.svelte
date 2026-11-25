@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { dragOrMaximize, toggleMaximize } from '$lib/ui/windowDrag';
   import { isVaultInitialized, validateVaultPassword, resetVault } from '$lib/api/vault';
   import { showToast, confirmModal } from '$lib/stores/uiNotifications.svelte';
   import Logo from './Logo.svelte';
@@ -124,22 +125,6 @@
     }
   }
 
-  async function maximizeWindow() {
-    try {
-      await invoke('window_maximize');
-    } catch {
-      try {
-        if (appWindow) {
-          await appWindow.toggleMaximize();
-        } else if (typeof window !== 'undefined') {
-          await getCurrentWindow().toggleMaximize();
-        }
-      } catch (err) {
-        console.warn('Failed to toggle maximize window:', err);
-      }
-    }
-  }
-
   async function closeWindow() {
     try {
       await invoke('window_close');
@@ -152,25 +137,6 @@
         }
       } catch (err) {
         console.warn('Failed to close window:', err);
-      }
-    }
-  }
-
-  async function startDragging(e: MouseEvent) {
-    if (e.button !== 0) return;
-    const target = e.target as HTMLElement | null;
-    if (target?.closest('button, input, textarea, a, select, [role="button"], .no-drag')) return;
-    try {
-      await invoke('window_start_dragging');
-    } catch {
-      try {
-        if (appWindow) {
-          await appWindow.startDragging();
-        } else if (typeof window !== 'undefined') {
-          await getCurrentWindow().startDragging();
-        }
-      } catch (err) {
-        console.warn('Failed to start dragging window:', err);
       }
     }
   }
@@ -299,14 +265,8 @@
 </script>
 
 <div
-  data-tauri-drag-region
   class="fixed inset-0 z-50 flex bg-neutral-50 dark:bg-[#0a0a0a] text-neutral-900 dark:text-white select-none cursor-default"
-  onmousedown={startDragging}
-  ondblclick={(e) => {
-    const target = e.target as HTMLElement | null;
-    if (target?.closest('button, input, textarea, a, select, [role="button"], .no-drag')) return;
-    maximizeWindow();
-  }}
+  onmousedown={dragOrMaximize}
 >
   <!-- Top Bar Controls -->
   <div class="absolute top-0 right-0 z-20 flex items-center gap-1.5 p-3 sm:p-4 no-drag">
@@ -343,7 +303,7 @@
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path></svg>
       </button>
       <button
-        onclick={() => maximizeWindow()}
+        onclick={() => toggleMaximize()}
         class="p-1.5 hover:bg-neutral-200 dark:hover:bg-neutral-800 text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer rounded"
         title={t('lock.maximize')}
         aria-label={t('lock.maximize')}
@@ -363,9 +323,8 @@
 
   <!-- Left Panel: Brand Quote (2 Columns: w-2/3) -->
   <div
-    data-tauri-drag-region
     class="hidden lg:flex w-2/3 flex-col justify-between p-12 lg:p-16 xl:p-20 bg-white dark:bg-neutral-950 border-r border-neutral-200 dark:border-neutral-800/60 relative overflow-hidden shrink-0"
-    onmousedown={startDragging}
+    onmousedown={dragOrMaximize}
   >
     <!-- Sky Blue Grid Flow Animation to CAPost Logo -->
     <GridFlowBackground targetX={64} targetY={64} count={5} />
@@ -406,9 +365,8 @@
 
   <!-- Right Panel: Master Password Input Form (1 Column: w-1/3) -->
   <div
-    data-tauri-drag-region
     class="w-full lg:w-1/3 flex flex-col justify-center items-center p-6 sm:p-10 xl:p-12 bg-neutral-50 dark:bg-[#0a0a0a] relative z-10 shrink-0"
-    onmousedown={startDragging}
+    onmousedown={dragOrMaximize}
   >
     <div class="w-full max-w-sm space-y-8 no-drag">
       <div class="text-center">

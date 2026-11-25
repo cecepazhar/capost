@@ -7,70 +7,104 @@
     <title>CAPost — Zero-Knowledge API Studio</title>
     <script>
       try {
-        const theme = localStorage.getItem('caframework-theme');
-        if (theme === 'light') {
-          document.documentElement.classList.remove('dark');
-        } else {
-          document.documentElement.classList.add('dark');
-        }
+        // Same key the theme store writes (lib/stores/theme.svelte.ts), so the splash and the
+        // window background match the app from the first frame. Default: dark.
+        var theme = localStorage.getItem('capost-theme');
+        document.documentElement.classList.toggle('dark', theme !== 'light');
       } catch (e) {}
     </script>
     <style>
-      /* Boot splash: plain HTML/CSS so it paints in the very first frame, before any JS bundle. */
+      /* Boot splash: plain HTML/CSS so it paints in the very first frame, before any JS bundle.
+         Same family look as the other CA apps (CACalm): soft colour glows, the app tile with a
+         breathing ring, a thin progress bar and the maker line. */
       html, body { margin: 0; background: #0e0e0e; }
       html:not(.dark), html:not(.dark) body { background: #f5f5f5; }
       #boot-splash {
         position: fixed; inset: 0; z-index: 2147483647;
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
-        background: #0e0e0e; color: #e5e5e5;
-        font: 13px/1.4 "Segoe UI", system-ui, -apple-system, sans-serif;
-        transition: opacity 260ms ease, visibility 260ms ease;
-        -webkit-app-region: drag; user-select: none; cursor: default;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        background:
+          radial-gradient(40% 45% at 30% 35%, rgba(56,189,248,.20), transparent 70%),
+          radial-gradient(35% 40% at 72% 65%, rgba(99,102,241,.16), transparent 70%),
+          #0e0e0e;
+        color: #ededed;
+        font: 13px/1.4 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, sans-serif;
+        transition: opacity 300ms ease, visibility 300ms ease;
+        user-select: none; cursor: default;
       }
-      html:not(.dark) #boot-splash { background: #f5f5f5; color: #171717; }
+      html:not(.dark) #boot-splash {
+        background:
+          radial-gradient(40% 45% at 30% 35%, rgba(14,165,233,.16), transparent 70%),
+          radial-gradient(35% 40% at 72% 65%, rgba(99,102,241,.10), transparent 70%),
+          #f5f5f5;
+        color: #171717;
+      }
       #boot-splash.is-done { opacity: 0; visibility: hidden; }
-      #boot-splash .bs-logo { width: 64px; height: 64px; animation: bs-pulse 1.6s ease-in-out infinite; }
-      #boot-splash .bs-logo polygon { stroke: #38bdf8; }
-      html:not(.dark) #boot-splash .bs-logo polygon { stroke: #0ea5e9; }
-      #boot-splash .bs-name { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
-      #boot-splash .bs-sub { margin-top: 2px; font-size: 12px; color: #8a8a8a; text-align: center; }
-      #boot-splash .bs-track { width: 220px; height: 3px; border-radius: 3px; overflow: hidden; background: rgba(127,127,127,.18); }
-      #boot-splash .bs-bar { height: 100%; width: 0%; border-radius: 3px; background: linear-gradient(90deg, #0ea5e9, #38bdf8); transition: width 180ms ease-out; }
-      #boot-splash .bs-step { min-height: 16px; font-size: 11.5px; color: #8a8a8a; }
-      @keyframes bs-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .75; transform: scale(.96); } }
-      @media (prefers-reduced-motion: reduce) { #boot-splash .bs-logo { animation: none; } }
+      #boot-splash .bs-logo-wrap { position: relative; width: 84px; height: 84px; display: flex; align-items: center; justify-content: center; }
+      #boot-splash .bs-ring { position: absolute; inset: 0; border-radius: 26px; background: #38bdf8; animation: bs-breathe 3.2s ease-in-out infinite; }
+      #boot-splash .bs-logo { position: relative; width: 84px; height: 84px; border-radius: 22px; box-shadow: 0 10px 30px -12px rgba(0,0,0,.6); }
+      html:not(.dark) #boot-splash .bs-logo { box-shadow: 0 10px 30px -14px rgba(15,23,42,.45); }
+      #boot-splash .bs-name { font-size: 22px; font-weight: 600; letter-spacing: -0.01em; text-align: center; }
+      #boot-splash .bs-sub { margin-top: 2px; font-size: 12px; color: #737373; text-align: center; }
+      #boot-splash .bs-track { width: 240px; height: 4px; border-radius: 4px; overflow: hidden; background: rgba(127,127,127,.18); }
+      #boot-splash .bs-bar { height: 100%; width: 0%; border-radius: 4px; background: linear-gradient(90deg, #0ea5e9, #7dd3fc); transition: width 180ms ease-out; }
+      #boot-splash .bs-step { min-height: 16px; font-size: 11.5px; color: #737373; }
+      #boot-splash .bs-by { position: absolute; bottom: 22px; font-size: 11px; color: #737373; }
+      @keyframes bs-breathe { 0%, 100% { transform: scale(1); opacity: .32; } 50% { transform: scale(1.28); opacity: .04; } }
+      @media (prefers-reduced-motion: reduce) { #boot-splash .bs-ring { animation: none; opacity: .14; } }
     </style>
-    <link href="/_app/immutable/entry/start.BswUJi9h.js" rel="modulepreload">
-		<link href="/_app/immutable/chunks/DoaKAncz.js" rel="modulepreload">
+    <link href="/_app/immutable/entry/start.DpjZMz8B.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/ik_DHd4R.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/fOqM8PpY.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/BJTtIYsV.js" rel="modulepreload">
-		<link href="/_app/immutable/entry/app.DEXAYQZX.js" rel="modulepreload">
+		<link href="/_app/immutable/entry/app.CqmbRsBE.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/CaC3yEL3.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/CXnWGUKM.js" rel="modulepreload">
-		<link href="/_app/immutable/nodes/0.RfK7O9cZ.js" rel="modulepreload">
+		<link href="/_app/immutable/nodes/0.DMo2Km-5.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/BquQTFpo.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/CUftb6sT.js" rel="modulepreload">
-		<link href="/_app/immutable/chunks/DiIKEGeX.js" rel="modulepreload">
-		<link href="/_app/immutable/chunks/t0D1lOG1.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/DM_XQhzw.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/C2qNKZNz.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/DPku7FeV.js" rel="modulepreload">
-		<link href="/_app/immutable/chunks/B7msqU0E.js" rel="modulepreload">
-		<link href="/_app/immutable/chunks/BGrBq_a6.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/Drj3dv6i.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/sU3WM1F4.js" rel="modulepreload">
+		<link href="/_app/immutable/chunks/CUkZ2xbz.js" rel="modulepreload">
 		<link href="/_app/immutable/chunks/DOen0PHX.js" rel="modulepreload">
 		
 		<link href="/_app/immutable/assets/ai.fXSWue7C.css" rel="stylesheet">
-		<link href="/_app/immutable/assets/0.Cbs9BRoP.css" rel="stylesheet">
+		<link href="/_app/immutable/assets/0.DDHh4nzl.css" rel="stylesheet">
   </head>
   <body data-sveltekit-preload-data="hover">
     <div id="boot-splash" role="status" aria-live="polite" aria-label="Loading CAPost">
-      <svg class="bs-logo" viewBox="0 0 512 512" fill="none" aria-hidden="true">
-        <polygon points="256,105 412,385 256,315 100,385" fill="none" stroke-width="28" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      <div class="bs-logo-wrap">
+        <span class="bs-ring" aria-hidden="true"></span>
+        <!-- The app icon (dark tile, faint grid, cyan arrow), inline so it needs no request. -->
+        <svg class="bs-logo" viewBox="0 0 512 512" aria-hidden="true">
+          <defs>
+            <linearGradient id="bs-tile" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#151a21" />
+              <stop offset="1" stop-color="#0a0d11" />
+            </linearGradient>
+            <pattern id="bs-grid" width="32" height="32" patternUnits="userSpaceOnUse">
+              <path d="M32 0H0V32" fill="none" stroke="#38bdf8" stroke-opacity=".07" stroke-width="2" />
+            </pattern>
+            <radialGradient id="bs-glow" cx=".5" cy=".55" r=".5">
+              <stop offset="0" stop-color="#38bdf8" stop-opacity=".16" />
+              <stop offset="1" stop-color="#38bdf8" stop-opacity="0" />
+            </radialGradient>
+          </defs>
+          <rect width="512" height="512" rx="112" fill="url(#bs-tile)" />
+          <rect width="512" height="512" rx="112" fill="url(#bs-grid)" />
+          <rect width="512" height="512" rx="112" fill="url(#bs-glow)" />
+          <polygon points="256,112 400,380 256,316 112,380" fill="none" stroke="#38bdf8" stroke-width="30" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </div>
       <div>
         <div class="bs-name">CAPost</div>
-        <div class="bs-sub">API Studio</div>
+        <div class="bs-sub" id="boot-sub">Zero-knowledge API studio</div>
       </div>
       <div class="bs-track"><div class="bs-bar" id="boot-bar"></div></div>
       <div class="bs-step" id="boot-step">Starting…</div>
+      <div class="bs-by" id="boot-by">by Cecep Azhar · Fathforce</div>
     </div>
     <script>
       // Progress creeps toward 90% on its own; the app reports real steps through
@@ -79,6 +113,15 @@
         var bar = document.getElementById('boot-bar');
         var label = document.getElementById('boot-step');
         var splash = document.getElementById('boot-splash');
+        var lang = 'en';
+        try {
+          lang = localStorage.getItem('capost_locale') || (navigator.language || '').slice(0, 2);
+        } catch (e) {}
+        if (lang === 'id') {
+          document.getElementById('boot-sub').textContent = 'Studio API zero-knowledge';
+          document.getElementById('boot-by').textContent = 'oleh Cecep Azhar · Fathforce';
+          label.textContent = 'Memulai…';
+        }
         var pct = 0, finished = false;
         function set(p) { pct = Math.max(pct, Math.min(100, p)); if (bar) bar.style.width = pct + '%'; }
         var timer = setInterval(function () { if (pct < 90) set(pct + Math.max(0.6, (90 - pct) * 0.06)); }, 60);
@@ -94,6 +137,7 @@
         }
         window.__capostBoot = {
           start: performance.now(),
+          lang: lang,
           step: function (text, p) { if (label && text) label.textContent = text; if (typeof p === 'number') set(p); },
           done: done
         };
@@ -103,15 +147,15 @@
     <div style="display: contents">
 			<script>
 				{
-					__sveltekit_yrsapp = {
+					__sveltekit_1bwcmy = {
 						base: ""
 					};
 
 					const element = document.currentScript.parentElement;
 
 					Promise.all([
-						import("/_app/immutable/entry/start.BswUJi9h.js"),
-						import("/_app/immutable/entry/app.DEXAYQZX.js")
+						import("/_app/immutable/entry/start.DpjZMz8B.js"),
+						import("/_app/immutable/entry/app.CqmbRsBE.js")
 					]).then(([kit, app]) => {
 						kit.start(app, element);
 					});

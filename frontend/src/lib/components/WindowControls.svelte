@@ -3,10 +3,10 @@
   import { getCurrentWindow } from '@tauri-apps/api/window';
   import {
     cmdWindowMinimize,
-    cmdWindowMaximize,
     cmdWindowClose
   } from '$lib/generated/commands';
   import { t } from '$lib/i18n/index.svelte';
+  import { toggleMaximize } from '$lib/ui/windowDrag';
 
   let isMaximized = $state(false);
 
@@ -35,17 +35,8 @@
   }
 
   async function handleMaximize() {
-    try {
-      const appWindow = getCurrentWindow();
-      if (appWindow) {
-        await appWindow.toggleMaximize();
-        isMaximized = await appWindow.isMaximized();
-      } else {
-        await cmdWindowMaximize();
-      }
-    } catch {
-      await cmdWindowMaximize().catch(() => {});
-    }
+    await toggleMaximize();
+    await updateMaximizedState();
   }
 
   async function handleClose() {
@@ -61,8 +52,27 @@
     }
   }
 
+  // Keep the icon in sync however the window changes size (title-bar double-click, Aero Snap,
+  // Win+Up), not only when this button is used. Debounced: a maximize fires many resizes.
   onMount(() => {
     updateMaximizedState();
+    let unlisten: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      getCurrentWindow()
+        .onResized(() => {
+          clearTimeout(timer);
+          timer = setTimeout(updateMaximizedState, 80);
+        })
+        .then((u) => (unlisten = u))
+        .catch(() => {});
+    } catch {
+      // Browser preview
+    }
+    return () => {
+      clearTimeout(timer);
+      unlisten?.();
+    };
   });
 </script>
 

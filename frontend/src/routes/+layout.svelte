@@ -21,6 +21,7 @@
   import { t } from '$lib/i18n/index.svelte';
   import HeaderQuickControls from '$lib/components/HeaderQuickControls.svelte';
   import WindowControls from '$lib/components/WindowControls.svelte';
+  import { dragOrMaximize } from '$lib/ui/windowDrag';
   import WorkspaceMenu from '$lib/components/WorkspaceMenu.svelte';
   import Logo from '$lib/components/Logo.svelte';
   import { navItems as getNavItems, settingsNavItem } from '$lib/navItems';
@@ -114,17 +115,7 @@
     toggleAiChat();
   }
 
-  function startDragging(e: MouseEvent) {
-    const target = e.target as HTMLElement | null;
-    if (target?.closest('button, input, textarea, a, select, [role="button"], .no-drag')) {
-      return;
-    }
-    invoke('window_start_dragging').catch(() => {});
-  }
-
-  function maximizeWindow() {
-    invoke('window_maximize').catch(() => {});
-  }
+  // Title-bar drag / double-click maximize: see $lib/ui/windowDrag.
 
   let { children } = $props();
 </script>
@@ -153,17 +144,10 @@
     <!-- Title Bar: Frameless top header across the window -->
     <header
       class="min-h-[3rem] h-[calc(3rem+env(safe-area-inset-top,0px))] pt-[env(safe-area-inset-top,0px)] flex items-center gap-1 md:gap-2 pl-2 pr-1 md:pl-3 shrink-0 select-none cursor-default"
-      data-tauri-drag-region
-      onmousedown={startDragging}
-      ondblclick={(e) => {
-        const target = e.target as HTMLElement | null;
-        if (!target?.closest('button, input, textarea, a, select, [role="button"], .no-drag')) {
-          maximizeWindow();
-        }
-      }}
+      onmousedown={dragOrMaximize}
     >
       <!-- Left: Mobile drawer button + current section breadcrumb -->
-      <div class="flex items-center gap-1 min-w-0 flex-1" data-tauri-drag-region>
+      <div class="flex items-center gap-1 min-w-0 flex-1">
         <button
           type="button"
           onclick={() => (mobileDrawerOpen = true)}
@@ -176,8 +160,8 @@
           </svg>
         </button>
 
-        <div class="flex gap-1 text-xs items-center overflow-x-auto scrollbar-none min-w-0 flex-1" data-tauri-drag-region>
-          <span class="px-2 py-1 text-xs font-semibold shrink-0 hidden sm:flex items-center gap-1.5 text-neutral-900 dark:text-white" data-tauri-drag-region>
+        <div class="flex gap-1 text-xs items-center overflow-x-auto scrollbar-none min-w-0 flex-1">
+          <span class="px-2 py-1 text-xs font-semibold shrink-0 hidden sm:flex items-center gap-1.5 text-neutral-900 dark:text-white">
             <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={currentSection.path} />
             </svg>
@@ -187,10 +171,10 @@
       </div>
 
       <!-- Center: Draggable blank area -->
-      <div class="flex-1 h-full min-w-[20px]" data-tauri-drag-region></div>
+      <div class="flex-1 h-full min-w-[20px]"></div>
 
       <!-- Right: Unified Header Controls (Live dot, Workspace, Quick Controls, Notifications, Window Controls) -->
-      <div class="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 shrink-0" data-tauri-drag-region>
+      <div class="flex items-center gap-1.5 text-neutral-500 dark:text-neutral-400 shrink-0">
         <!-- 1. Live Pulse Dot Indicator -->
         <div class="hidden sm:flex items-center px-1 py-1 shrink-0" title={"Zero-Knowledge Encrypted Vault Active"}>
           <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
