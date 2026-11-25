@@ -80,6 +80,7 @@ const COMMANDS: &[&str] = &[
     "billing_activate_license",
     "billing_start_trial",
     "billing_sign_out",
+    "billing_license_info",
     "open_external_url",
     "save_text_file",
 ];

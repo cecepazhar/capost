@@ -245,6 +245,10 @@ export async function invoke_billingSignOut(): Promise<any> {
   return invoke('billing_sign_out');
 }
 
+export async function invoke_billingLicenseInfo(): Promise<any> {
+  return invoke('billing_license_info');
+}
+
 export async function invoke_openExternalUrl(url: string): Promise<any> {
   return invoke('open_external_url', { url: url });
 }

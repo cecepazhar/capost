@@ -78,12 +78,22 @@ pub fn get_effective_state() -> Result<EffectiveState, CafError> {
     })
 }
 
-/// Instant 7-day Pro trial activation
+/// Instant 7-day Pro trial activation — once per installation. Starting it again while it is
+/// running is a no-op; after it has ended it is refused (deactivating a licence keeps the
+/// trial markers, see [`sign_out`], so the trial cannot be reset that way either).
 pub fn start_trial() -> Result<EffectiveState, CafError> {
     let now_unix = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
+    if let Some((_started, expires_at)) = store::get_trial_info()? {
+        if now_unix <= expires_at {
+            return get_effective_state();
+        }
+        return Err(CafError::generic(
+            "The CAPost Pro trial has already been used on this device. Activate a licence key to keep using Pro.",
+        ));
+    }
     let trial_duration_secs = 7 * 86400; // 7 days
     let expires_at_unix = now_unix + trial_duration_secs;
     store::save_trial_info(now_unix, expires_at_unix)?;
@@ -136,9 +146,36 @@ pub fn activate_license(license_key: &str) -> Result<EffectiveState, CafError> {
     get_effective_state()
 }
 
-/// Sign out / reset billing to Free
+/// Deactivate the licence on this device / sign out of the Pro token. The trial markers stay,
+/// so the 7-day trial cannot be restarted by deactivating.
 pub fn sign_out() -> Result<(), CafError> {
-    store::clear_billing_state()
+    store::clear_license_and_tokens()
+}
+
+/// What the Settings → CAPost Pro screen needs beyond the entitlement itself.
+#[derive(Debug, Clone, serde::Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct LicenseInfo {
+    /// The 7-day trial has been started at some point on this installation.
+    pub trial_used: bool,
+    /// The activated key with its middle part hidden (`CAPS99-••••••-3`), if any.
+    pub license_key_masked: Option<String>,
+}
+
+pub fn license_info() -> Result<LicenseInfo, CafError> {
+    let license_key_masked = store::get_license_info()?.map(|(key, _, _)| mask_license_key(&key));
+    Ok(LicenseInfo {
+        trial_used: store::get_trial_started_at()?.is_some(),
+        license_key_masked,
+    })
+}
+
+fn mask_license_key(key: &str) -> String {
+    let parts: Vec<&str> = key.trim().split('-').collect();
+    match parts.as_slice() {
+        [head, mid, tail] => format!("{}-{}-{}", head.to_uppercase(), "•".repeat(mid.chars().count()), tail),
+        _ => "•".repeat(key.chars().count().min(16)),
+    }
 }
 
 #[cfg(test)]
@@ -162,10 +199,24 @@ mod tests {
         assert_eq!(state.billing_type, "trial");
         assert!(state.expires_at.is_some());
 
-        // Sign out should clear it
+        // Starting it again while it runs changes nothing.
+        let again = start_trial().unwrap();
+        assert_eq!(again.billing_type, "trial");
+
+        // Deactivating a licence keeps the trial (it is once per installation).
         sign_out().unwrap();
-        let state = get_effective_state().unwrap();
-        assert!(!state.is_pro);
+        assert!(get_effective_state().unwrap().is_pro);
+        assert!(license_info().unwrap().trial_used);
+
+        // Once expired, the trial cannot be restarted.
+        store::save_trial_info(1, 2).unwrap();
+        assert!(!get_effective_state().unwrap().is_pro);
+        assert!(start_trial().is_err());
+    }
+
+    #[test]
+    fn test_license_info_masks_key() {
+        assert_eq!(mask_license_key("caps99-a1b2c3-7"), "CAPS99-••••••-7");
     }
 
     #[test]
@@ -177,10 +228,19 @@ mod tests {
         assert!(activate_license("").is_err());
         assert!(activate_license("short").is_err());
 
-        // Valid key
-        let state = activate_license("CAPOST-PRO-ABCD-1234").unwrap();
+        // Old/invalid formats and a wrong check digit are refused.
+        assert!(activate_license("CAPOST-PRO-ABCD-1234").is_err());
+        assert!(activate_license("CAPS01-A1B2C3-4").is_err());
+
+        // Valid yearly key (tier 01); case does not matter.
+        let state = activate_license("caps01-a1b2c3-5").unwrap();
         assert!(state.is_pro);
         assert_eq!(state.billing_type, "yearly");
+        assert_eq!(license_info().unwrap().license_key_masked.as_deref(), Some("CAPS01-••••••-5"));
+
+        // Tier 99 is lifetime.
+        let state = activate_license("CAPS99-A1B2C3-8").unwrap();
+        assert_eq!(state.billing_type, "lifetime");
 
         sign_out().unwrap();
         let state = get_effective_state().unwrap();

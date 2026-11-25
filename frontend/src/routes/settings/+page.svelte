@@ -11,21 +11,16 @@
   import { getProfile, saveProfile } from '$lib/stores/profile.svelte';
   import { getAppearance, setReduceMotion } from '$lib/stores/appearance.svelte';
   import { getUpdater, checkForUpdates, installUpdate } from '$lib/stores/updater.svelte';
-  import { APP_VERSION, releaseNotesUrl, pricingUrl, PRICING_URL } from '$lib/appInfo';
-  import { PRO_PRICING, formatUsd, type BillingInterval } from '$lib/pro/pricing';
+  import { APP_VERSION, releaseNotesUrl } from '$lib/appInfo';
   import { openExternalUrl } from '$lib/utils/url';
   import { errorText } from '$lib/errors';
 	import { getPerformancePrefs, setPerformancePrefs, type PerformancePrefs } from '$lib/api/performance';
-  import { t, intlLocale } from '$lib/i18n/index.svelte';
-  import ProLoginForm from '$lib/components/ProLoginForm.svelte';
-  import { getPro, refreshProStatus, checkProServer, syncPro, setProStatus } from '$lib/stores/pro.svelte';
-  import { proStartTrial, proAccount, proRevokeDevice, proLogout, type ProDevice, type DeviceLimit, type SyncOutcome } from '$lib/api/pro';
-  import { proErrorMessage } from '$lib/pro/errors';
-  import ProTeamPanel from '$lib/components/ProTeamPanel.svelte';
+  import { t } from '$lib/i18n/index.svelte';
   import { SHORTCUT_GROUPS } from '$lib/shortcuts';
   import PageHead from '$lib/components/page/PageHead.svelte';
   import AmbientSettingsCard from '$lib/components/AmbientSettingsCard.svelte';
-  import { isPro } from '$lib/stores/billing.svelte';
+  import { isPro, billingStore, licenseInfo } from '$lib/stores/billing.svelte';
+  import LicenseActivation from '$lib/components/LicenseActivation.svelte';
   import { proGate } from '$lib/stores/proGate.svelte';
 
   // Shared surface classes so every tab reads the same in light and dark mode.
@@ -33,171 +28,89 @@
   const SUBCARD = 'border border-neutral-200 dark:border-neutral-800 rounded-lg p-5 bg-neutral-50 dark:bg-neutral-950';
   const MUTED = 'text-neutral-500 dark:text-neutral-400';
 
-  // ---- CAPost Pro account (Subscription tab) ----------------------------------------------
-  const pro = getPro();
-  let showProLogin = $state(false);
-  let proDevices = $state<ProDevice[] | null>(null);
-  let proDeviceLimit = $state<number | null>(null);
-  let deviceLimit = $state<DeviceLimit | null>(null);
-  let proBusy = $state(false);
+  // ---- CAPost Pro (offline licence key / 7-day trial, see lib/stores/billing) -------------
+  const billing = billingStore;
+  let trialBusy = $state(false);
+
+  const isTrial = $derived($billing.isPro && $billing.billingType === 'trial');
+  const trialDaysLeft = $derived.by(() => {
+    if (!isTrial || !$billing.expiresAt) return 0;
+    return Math.max(0, Math.ceil((new Date($billing.expiresAt).getTime() - Date.now()) / 86_400_000));
+  });
+  const planLabel = $derived(
+    !$billing.isPro
+      ? t('settings.license.planFree')
+      : isTrial
+        ? t('settings.license.planTrial')
+        : $billing.billingType === 'lifetime'
+          ? t('settings.license.planLifetime')
+          : $billing.billingType === 'yearly'
+            ? t('settings.license.planYearly')
+            : t('settings.license.planPro')
+  );
+  const planBody = $derived(
+    !$billing.isPro
+      ? t('settings.license.planFreeBody')
+      : isTrial
+        ? t('settings.license.planTrialBody', { count: trialDaysLeft })
+        : t('settings.license.planProBody')
+  );
+  const compareRows = $derived([
+    { label: t('settings.license.featRequests'), free: '✓', pro: '✓' },
+    { label: t('settings.license.featPostman'), free: '✓', pro: '✓' },
+    { label: t('settings.license.featVault'), free: '✓', pro: '✓' },
+    { label: t('settings.license.featUpdates'), free: '✓', pro: '✓' },
+    { label: t('settings.license.featRunner'), free: t('settings.license.featRunnerFree'), pro: t('settings.license.featRunnerPro') },
+    { label: t('settings.license.featAi'), free: '—', pro: '✓' },
+    { label: t('settings.license.featAmbient'), free: '—', pro: '✓' }
+  ]);
 
   $effect(() => {
-    if (activeTab === 'subscription') {
-      void refreshProStatus();
-      void checkProServer();
-    }
+    if (activeTab === 'pro') void billingStore.refresh().catch(() => {});
   });
 
-  // Literal class strings per tone so Tailwind's scanner sees them.
-  const TONE: Record<string, string> = {
-    sky: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30',
-    emerald: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
-    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
-    rose: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30',
-    neutral: 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border-neutral-300 dark:border-neutral-700'
-  };
-  const SMALL_BUTTON = 'px-3 py-1.5 text-xs font-medium rounded-md border border-neutral-300 dark:border-neutral-700 text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800 disabled:opacity-50 transition-colors';
-
-  function formatProDate(ts: number | null | undefined): string {
-    return ts ? new Date(ts * 1000).toLocaleDateString(intlLocale(), { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  }
-
-  function formatProTime(ts: number | null | undefined): string {
-    return ts ? new Date(ts * 1000).toLocaleString(intlLocale(), { dateStyle: 'medium', timeStyle: 'short' }) : '';
-  }
-
-  const proState = $derived.by(() => {
-    const status = pro.status;
-    if (!status?.signedIn) return null;
-    const ent = status.entitlement;
-    const lic = status.license;
-    if (!status.keyConfigured) return { tone: 'amber', text: t('pro.account.stateKeyMissing') };
-    if (ent.state === 'valid') {
-      if (ent.tier === 'team') return { tone: 'sky', text: t('pro.account.stateTeamMember') };
-      if (lic?.status === 'trialing') {
-        const end = lic.trialEndsAt ?? ent.expiresAt;
-        const count = Math.max(0, Math.ceil((end - Date.now() / 1000) / 86400));
-        return { tone: 'sky', text: t('pro.account.stateTrial', { count }) };
-      }
-      if (lic?.status === 'cancelled') return { tone: 'amber', text: t('pro.account.stateCancelled', { date: formatProDate(lic.currentPeriodEnd) }) };
-      if (lic?.status === 'past_due') return { tone: 'amber', text: t('pro.account.statePastDue') };
-      return lic?.currentPeriodEnd
-        ? { tone: 'emerald', text: t('pro.account.stateActive', { date: formatProDate(lic.currentPeriodEnd) }) }
-        : { tone: 'emerald', text: t('pro.account.stateActiveNoDate') };
-    }
-    if (ent.state === 'expired' || (lic && !lic.entitled)) return { tone: 'rose', text: t('pro.account.stateExpired') };
-    if (ent.state === 'revalidationRequired' || ent.state === 'invalid' || lic) return { tone: 'amber', text: t('pro.account.stateNeedsSync') };
-    return { tone: 'neutral', text: t('pro.account.stateNoPlan') };
-  });
-
-  function handleOutcome(outcome: SyncOutcome | null, successText: string) {
-    if (!outcome) return;
-    if (outcome.deviceLimit) deviceLimit = outcome.deviceLimit;
-    else showToast(successText, 'success');
-  }
-
-  async function runProSync() {
-    proBusy = true;
+  async function startTrial() {
+    trialBusy = true;
     try {
-      handleOutcome(await syncPro(), t('pro.account.synced'));
+      await billingStore.startTrial();
+      showToast(t('settings.license.trialStarted'), 'success');
     } catch (err) {
-      showToast(proErrorMessage(err), 'error');
+      showToast(errorText(err), 'error');
     } finally {
-      proBusy = false;
+      trialBusy = false;
     }
   }
 
-  async function handleProSignedIn() {
-    showProLogin = false;
-    await refreshProStatus();
-    await runProSync();
-  }
-
-  async function startProTrial() {
-    if (!pro.status?.signedIn) {
-      showProLogin = true;
-      return;
-    }
-    proBusy = true;
-    try {
-      const outcome = await proStartTrial();
-      setProStatus(outcome.status);
-      handleOutcome(outcome, t('pro.account.trialStarted', { days: PRO_PRICING.trialDays }));
-    } catch (err) {
-      showToast(proErrorMessage(err), 'error');
-    } finally {
-      proBusy = false;
-    }
-  }
-
-  async function loadProDevices() {
-    try {
-      const details = await proAccount();
-      proDevices = details.devices;
-      proDeviceLimit = details.access?.deviceLimit ?? null;
-    } catch (err) {
-      showToast(proErrorMessage(err), 'error');
-    }
-  }
-
-  async function removeProDevice(id: string) {
-    try {
-      await proRevokeDevice(id);
-      proDevices = proDevices?.filter((d) => d.id !== id) ?? null;
-      if (deviceLimit) {
-        deviceLimit = null;
-        await runProSync(); // a slot is free now: activate this device
-      }
-    } catch (err) {
-      showToast(proErrorMessage(err), 'error');
-    }
-  }
-
-  async function signOutPro() {
+  async function deactivateLicense() {
     const ok = await confirmModal(
-      t('pro.account.signOutConfirm'),
-      t('pro.account.signOutTitle'),
+      t('settings.license.deactivateBody'),
+      t('settings.license.deactivateTitle'),
       true,
-      t('pro.account.signOut'),
+      t('settings.license.deactivate'),
       t('common.cancel')
     );
     if (!ok) return;
     try {
-      await proLogout();
-      proDevices = null;
-      await refreshProStatus();
-      showToast(t('pro.account.signedOut'), 'info');
+      await billingStore.signOut();
+      await billingStore.refresh().catch(() => {}); // a running trial stays active
+      showToast(t('settings.license.deactivated'), 'info');
     } catch (err) {
-      showToast(proErrorMessage(err), 'error');
+      showToast(errorText(err), 'error');
     }
   }
+
   const LABEL_BASE = 'block text-xs font-medium text-neutral-600 dark:text-neutral-400 uppercase';
   const LABEL = `${LABEL_BASE} mb-1`;
   const INPUT = 'w-full px-3 py-2 bg-neutral-50 dark:bg-neutral-950 border border-neutral-300 dark:border-neutral-800 rounded text-sm text-neutral-900 dark:text-white focus:outline-none focus:border-sky-500';
   const EYE_BUTTON = 'absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-900 dark:hover:text-white transition-colors p-1';
 
-  // Subscription tab
-  let billing = $state<BillingInterval>('monthly');
-  const proFeatures = $derived([
-    t('settings.subscription.featureSync', { devices: PRO_PRICING.syncDevices }),
-    t('settings.subscription.featureAi', { requests: PRO_PRICING.aiRequestsPerMonth }),
-    t('settings.subscription.featureTeam', { extra: PRO_PRICING.maxMembers - 1, members: PRO_PRICING.maxMembers }),
-    t('settings.subscription.featureLogs'),
-    t('settings.subscription.featureCommunity')
-  ]);
-
-  const TABS = ['profile', 'updates', 'ai', 'subscription', 'security', 'backup', 'performance', 'shortcuts'] as const;
+  const TABS = ['profile', 'pro', 'updates', 'ai', 'security', 'backup', 'performance', 'shortcuts'] as const;
   type SettingsTab = (typeof TABS)[number];
-  // `?tab=` lets the profile menu deep-link straight to a tab.
-  const requestedTab = page.url.searchParams.get('tab') ?? '';
+  // `?tab=` lets the profile menu / Upgrade buttons deep-link straight to a tab
+  // (`subscription` from older links lands on CAPost Pro).
+  const requestedTab = (page.url.searchParams.get('tab') ?? '').replace('subscription', 'pro');
   let activeTab = $state<SettingsTab>((TABS as readonly string[]).includes(requestedTab) ? (requestedTab as SettingsTab) : 'profile');
-
-  // Subscription only makes sense once the user has a CAPost account (Cloud): a purely local
-  // vault has nothing to subscribe to. Hidden until sign-in, shown for both free-cloud and Pro.
-  const visibleTabs = $derived(TABS.filter((tab) => tab !== 'subscription' || pro.status?.signedIn));
-  $effect(() => {
-    if (activeTab === 'subscription' && pro.status && !pro.status.signedIn) activeTab = 'profile';
-  });
+  const visibleTabs = TABS;
 
   const updater = getUpdater();
   const downloadPercent = $derived(
@@ -431,11 +344,15 @@
   {#if activeTab === 'profile'}
     <div class="{CARD} space-y-6">
       <div class="flex items-center gap-4">
-        <ProfileAvatar avatar={profileAvatar} name={profileName} size={56} pro={profile.plan === 'pro'} />
+        <ProfileAvatar avatar={profileAvatar} name={profileName} size={56} pro={$isPro} />
         <div class="min-w-0">
           <div class="flex items-center gap-2">
             <h2 class="text-lg font-semibold text-neutral-900 dark:text-white truncate">{profileName.trim() || profile.name}</h2>
-            <span class="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 uppercase">{profile.plan === 'pro' ? t('profileMenu.planPro') : t('profileMenu.planFree')}</span>
+            {#if $isPro}
+              <span class="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-brand-500/40 bg-brand-500/10 text-brand-600 dark:text-brand-400 uppercase">{t('profileMenu.planPro')}</span>
+            {:else}
+              <span class="text-[10px] font-semibold tracking-wider px-1.5 py-0.5 rounded border border-neutral-300 dark:border-neutral-700 text-neutral-600 dark:text-neutral-400 uppercase">{t('profileMenu.planFree')}</span>
+            {/if}
           </div>
           <p class="{MUTED} text-sm">{t('settings.profile.localNote')}</p>
         </div>
@@ -478,8 +395,23 @@
 
     </div>
 
+    <!-- Licence: activate right here while on Free (as in CATerm); manage it on CAPost Pro. -->
+    {#if !$isPro}
+      <div class={CARD}>
+        <LicenseActivation />
+      </div>
+    {:else}
+      <div class="{CARD} flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-semibold text-neutral-900 dark:text-white">CAPost {planLabel}</p>
+          <p class="text-xs {MUTED} mt-0.5">{planBody}</p>
+        </div>
+        <button type="button" class="cp-btn shrink-0" onclick={() => (activeTab = 'pro')}>{t('settings.tabs.pro')} →</button>
+      </div>
+    {/if}
+
     <!-- PRO Ambient Underglow Lighting Card -->
-    <AmbientSettingsCard defaultAccent="#64748b" appName="CAPost" />
+    <AmbientSettingsCard defaultAccent="#38bdf8" appName="CAPost" />
   {:else if activeTab === 'updates'}
     <div class="{CARD} space-y-4">
       <div class="flex flex-wrap justify-between items-center gap-4">
@@ -560,255 +492,75 @@
         <AiSettingsForm />
       {/if}
     </div>
-  {:else if activeTab === 'subscription'}
-    <div class="{CARD} space-y-6">
-      <div>
-        <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">{t('settings.subscription.title')}</h2>
-        <p class="{MUTED} text-sm mt-1">{t('settings.subscription.subtitle')}</p>
-      </div>
-
-      <!-- CAPost Pro account on this device -->
-      <div class="{SUBCARD} space-y-3">
-        {#if !pro.status?.signedIn}
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <p class="text-sm font-semibold text-neutral-900 dark:text-white">{t('pro.account.title')}</p>
-              <p class="text-xs {MUTED} mt-0.5">{t('pro.account.signedOutBody')}</p>
-            </div>
-            <button type="button" onclick={() => (showProLogin = true)} class="px-4 py-2 rounded-md text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-sm transition-colors shrink-0">
-              {t('pro.account.signInOrRegister')}
-            </button>
-          </div>
-        {:else}
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div class="min-w-0">
-              <p class="text-sm font-semibold text-neutral-900 dark:text-white truncate">{pro.status.account?.name || pro.status.account?.email}</p>
-              <p class="text-xs {MUTED} truncate">{pro.status.account?.email}</p>
-              {#if proState}
-                <span class="inline-block mt-1.5 text-[11px] font-semibold px-2 py-0.5 rounded-full border {TONE[proState.tone]}">{proState.text}</span>
-              {/if}
-            </div>
-            <div class="flex flex-wrap gap-2 shrink-0">
-              <button type="button" onclick={runProSync} disabled={proBusy || pro.syncing} class={SMALL_BUTTON}>
-                {pro.syncing ? t('pro.account.syncing') : t('pro.account.sync')}
-              </button>
-              <button type="button" onclick={loadProDevices} class={SMALL_BUTTON}>{t('pro.account.devices')}</button>
-              <button type="button" onclick={signOutPro} class="px-3 py-1.5 text-xs font-medium rounded-md border border-rose-300 dark:border-rose-900 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors">
-                {t('pro.account.signOut')}
-              </button>
-            </div>
-          </div>
-          {#if pro.status.lastSyncAt}
-            <p class="text-[11px] text-neutral-500">{t('pro.account.lastSync', { time: formatProTime(pro.status.lastSyncAt) })}</p>
-          {/if}
-          {#if proDevices}
-            {#if proDeviceLimit}
-              <p class="text-xs {MUTED}">{t('pro.account.deviceUsage', { used: proDevices.length, limit: proDeviceLimit })}</p>
+  {:else if activeTab === 'pro'}
+    <!-- Current plan -->
+    <div class="{CARD} !p-0 overflow-hidden">
+      <div class="flex flex-col md:flex-row md:items-center gap-5 p-6 {$isPro ? 'bg-gradient-to-r from-brand-500/[0.08] via-transparent to-transparent' : ''}">
+        <div class="w-14 h-14 shrink-0 rounded-2xl flex items-center justify-center text-2xl {$isPro ? 'bg-brand-500/15 text-brand-500 ring-1 ring-brand-500/30' : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-400'}">★</div>
+        <div class="min-w-0 flex-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <h2 class="text-lg font-semibold text-neutral-900 dark:text-white">CAPost {planLabel}</h2>
+            {#if $isPro}
+              <span class="cp-pill font-sans bg-emerald-500/12 text-emerald-600 dark:text-emerald-400">✓ {t('settings.license.statusActive')}</span>
             {/if}
-            {#if proDevices.length === 0}
-              <p class="text-xs {MUTED}">{t('pro.devices.empty')}</p>
-            {:else}
-              <ul class="divide-y divide-neutral-200 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-md bg-white dark:bg-neutral-900">
-                {#each proDevices as device (device.id)}
-                  <li class="flex items-center justify-between gap-3 px-3 py-2 text-xs">
-                    <div class="min-w-0">
-                      <p class="font-medium text-neutral-900 dark:text-white truncate">
-                        {device.name}
-                        {#if device.current}<span class="ml-1.5 text-[10px] px-1.5 py-px rounded-full {TONE.sky} border">{t('pro.devices.thisDevice')}</span>{/if}
-                      </p>
-                      <p class="text-neutral-500 truncate">{device.os} · v{device.clientVersion} · {t('pro.devices.lastSeen', { time: formatProTime(device.lastSeenAt) })}</p>
-                    </div>
-                    {#if !device.current}
-                      <button type="button" onclick={() => removeProDevice(device.id)} class="text-rose-600 dark:text-rose-400 hover:underline shrink-0">{t('pro.devices.remove')}</button>
-                    {/if}
-                  </li>
-                {/each}
-              </ul>
-            {/if}
+          </div>
+          <p class="{MUTED} text-sm mt-0.5">{planBody}</p>
+          {#if $licenseInfo.licenseKeyMasked && $isPro && !isTrial}
+            <p class="mt-2 text-[12px] {MUTED}">
+              {t('settings.license.activeKey')}: <span class="font-mono tracking-wider text-neutral-800 dark:text-neutral-200">{$licenseInfo.licenseKeyMasked}</span>
+            </p>
           {/if}
+        </div>
+        {#if $isPro && !isTrial}
+          <button type="button" class="cp-btn cp-btn-danger shrink-0" onclick={deactivateLicense}>{t('settings.license.deactivate')}</button>
         {/if}
       </div>
-
-      {#if pro.status?.signedIn && !pro.status.pending}
-        <ProTeamPanel onOutcome={handleOutcome} />
+      {#if isTrial}
+        <div class="h-1 bg-neutral-100 dark:bg-white/[0.05]"><div class="h-full bg-brand-500" style="width:{Math.max(4, (trialDaysLeft / 7) * 100)}%"></div></div>
       {/if}
+    </div>
 
-      {#if pro.isPro}
-        <!-- Active Pro / Lifetime Billing Overview (No need to show upgrade pricing cards) -->
-        <div class="rounded-xl border border-sky-500/40 bg-linear-to-br from-sky-500/10 via-neutral-50 dark:via-neutral-900/60 to-transparent p-6 space-y-5">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-neutral-200 dark:border-neutral-800">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-xs font-bold uppercase tracking-wider text-sky-600 dark:text-sky-400">Current Plan</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
-                  ACTIVE
-                </span>
-              </div>
-              <h3 class="text-xl font-bold text-neutral-900 dark:text-white mt-1">
-                {pro.status?.license?.plan?.toUpperCase() === 'LIFETIME' ? 'CAPost Pro — Founder Lifetime' : 'CAPost Pro Edition'}
-              </h3>
-              <p class="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
-                Zero-knowledge encrypted cloud synchronization & AI Copilot active.
-              </p>
-            </div>
-            <div class="text-right sm:text-right shrink-0">
-              <span class="text-2xl font-black text-neutral-900 dark:text-white">
-                {pro.status?.license?.plan?.toUpperCase() === 'LIFETIME' ? 'Lifetime Access' : '$6.00 / mo'}
-              </span>
-              <p class="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
-                {pro.status?.license?.plan?.toUpperCase() === 'LIFETIME' ? 'Never Expires · VIP Founder Tier' : 'Next billing cycle synced'}
-              </p>
-            </div>
-          </div>
-
-          <!-- Billing Info Grid -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
-            <div class="bg-white/60 dark:bg-neutral-950/60 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800/80">
-              <span class="text-neutral-500 dark:text-neutral-400 block text-[11px]">Customer Account</span>
-              <span class="font-semibold text-neutral-900 dark:text-white block mt-0.5 truncate">{pro.status?.account?.email || 'Registered User'}</span>
-            </div>
-            <div class="bg-white/60 dark:bg-neutral-950/60 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800/80">
-              <span class="text-neutral-500 dark:text-neutral-400 block text-[11px]">Device Seats</span>
-              <span class="font-semibold text-neutral-900 dark:text-white block mt-0.5">
-                {proDevices ? proDevices.length : 1} / {proDeviceLimit || 5} Devices Used
-              </span>
-            </div>
-            <div class="bg-white/60 dark:bg-neutral-950/60 rounded-lg p-3 border border-neutral-200 dark:border-neutral-800/80">
-              <span class="text-neutral-500 dark:text-neutral-400 block text-[11px]">License Signature</span>
-              <span class="font-mono text-neutral-900 dark:text-white block mt-0.5 truncate">
-                Ed25519 v1 (Verified Offline)
-              </span>
-            </div>
-          </div>
-
-          <!-- Active Features Checklist -->
-          <div class="pt-2">
-            <p class="text-xs font-semibold text-neutral-900 dark:text-white mb-2">Entitlements & Included Features:</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-neutral-700 dark:text-neutral-300">
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                <span>End-to-end encrypted cloud sync</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                <span>AI Ops Copilot & Prompt Studio</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                <span>Team Session & Tag Sharing</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <svg class="w-4 h-4 text-emerald-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                <span>Multi-Platform License (Desktop & Android)</span>
-              </div>
-            </div>
-          </div>
+    {#if !$isPro || isTrial}
+      <div class="grid gap-6 {!$isPro && !$licenseInfo.trialUsed ? 'lg:grid-cols-[1fr_320px]' : ''}">
+        <div class={CARD}>
+          <LicenseActivation />
         </div>
-      {:else}
-        <!-- Free / Community Tier: Offer Pro Upgrade options -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
-          <!-- Community: what everyone has today -->
-          <div class="{SUBCARD} space-y-2">
-            <div class="flex items-center gap-2">
-              <span class="font-semibold text-neutral-900 dark:text-white">{t('settings.subscription.freePlan')}</span>
-              <span class="text-xs bg-white dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 px-2 py-0.5 rounded">{t('settings.subscription.current')}</span>
-            </div>
-            <div class="text-2xl font-bold text-neutral-900 dark:text-white">$0</div>
-            <p class="{MUTED} text-xs leading-relaxed">{t('settings.subscription.freeBody')}</p>
+        {#if !$isPro && !$licenseInfo.trialUsed}
+          <div class="{CARD} flex flex-col">
+            <h3 class="text-[14px] font-semibold text-neutral-900 dark:text-white">{t('settings.license.trialTitle')}</h3>
+            <p class="mt-0.5 cp-muted flex-1">{t('settings.license.trialBody')}</p>
+            <button type="button" class="cp-btn mt-4 justify-center" onclick={startTrial} disabled={trialBusy}>✨ {t('settings.license.trialStart')}</button>
           </div>
-
-          <!-- Pro Upgrade -->
-          <div class="rounded-lg border-2 border-sky-500/50 bg-sky-50/60 dark:bg-sky-950/20 p-5 space-y-4">
-            <div class="flex items-center justify-between gap-2 flex-wrap">
-              <span class="font-semibold text-neutral-900 dark:text-white">{t('settings.subscription.proPlan')}</span>
-              <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-500 text-white">
-                {t('settings.subscription.introBadge', { percent: PRO_PRICING.introDiscountPercent, months: PRO_PRICING.introMonths })}
-              </span>
-            </div>
-
-            <div class="inline-flex p-0.5 rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-xs" role="group">
-              {#each ['monthly', 'yearly'] as const as interval (interval)}
-                <button
-                  type="button"
-                  aria-pressed={billing === interval}
-                  onclick={() => (billing = interval)}
-                  class="px-3 py-1 rounded-md font-medium transition-colors {billing === interval ? 'bg-sky-600 text-white' : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'}"
-                >
-                  {t(`settings.subscription.${interval}`)}
-                  {#if interval === 'yearly'}
-                    <span class="ml-1 text-[10px] font-semibold {billing === 'yearly' ? 'text-sky-100' : 'text-emerald-600 dark:text-emerald-400'}">{t('settings.subscription.saveYearly', { percent: PRO_PRICING.yearlyDiscountPercent })}</span>
-                  {/if}
-                </button>
-              {/each}
-            </div>
-
-            <div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-sm text-neutral-400 line-through">{formatUsd(PRO_PRICING[billing].list)}</span>
-                <span class="text-3xl font-bold text-neutral-900 dark:text-white">{formatUsd(PRO_PRICING[billing].intro)}</span>
-                <span class="text-sm text-neutral-500">{billing === 'monthly' ? t('settings.subscription.perMonth') : t('settings.subscription.perYear')}</span>
-              </div>
-              <p class="text-xs {MUTED} mt-1">
-                {#if billing === 'monthly'}
-                  {t('settings.subscription.monthlyThen', { months: PRO_PRICING.introMonths, price: formatUsd(PRO_PRICING.monthly.list) })}
-                {:else}
-                  {t('settings.subscription.yearlyThen', { perMonth: formatUsd(PRO_PRICING.yearly.intro / 12), price: formatUsd(PRO_PRICING.yearly.list) })}
-                {/if}
-              </p>
-            </div>
-
-            <ul class="space-y-1.5 text-xs text-neutral-700 dark:text-neutral-300">
-              {#each proFeatures as feature (feature)}
-                <li class="flex items-start gap-2">
-                  <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                  <span>{feature}</span>
-                </li>
-              {/each}
-            </ul>
-
-            <div class="flex flex-col sm:flex-row gap-2">
-              {#if pro.serverAvailable === false}
-                <button disabled class="flex-1 px-4 py-2 rounded-md text-sm font-semibold border border-sky-500/40 text-sky-700/70 dark:text-sky-300/70 cursor-not-allowed" title={t('settings.subscription.comingSoon')}>
-                  {t('settings.subscription.startTrial', { days: PRO_PRICING.trialDays })}
-                  <span class="block text-[10px] font-normal">{t('settings.subscription.comingSoon')}</span>
-                </button>
-              {:else if !pro.status?.license}
-                <!-- Signed out: opens Pro Login first. A license (trial or paid) hides the trial. -->
-                <button type="button" onclick={startProTrial} disabled={proBusy} class="flex-1 px-4 py-2 rounded-md text-sm font-semibold border border-sky-500/60 text-sky-700 dark:text-sky-300 hover:bg-sky-500/10 disabled:opacity-50 transition-colors">
-                  {t('settings.subscription.startTrial', { days: PRO_PRICING.trialDays })}
-                </button>
-              {/if}
-              <button
-                type="button"
-                onclick={() => openExternalUrl(pricingUrl(pro.status?.account?.id))}
-                class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-md text-sm font-semibold bg-sky-600 hover:bg-sky-500 text-white shadow-sm transition-colors"
-              >
-                {t('settings.subscription.subscribe')}
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-              </button>
-            </div>
-            <p class="text-[11px] text-neutral-500">{t('settings.subscription.trialNote')}</p>
-            {#if pro.status?.signedIn}
-              <p class="text-[11px] text-neutral-500">{t('pro.account.checkoutHint')}</p>
-            {/if}
-          </div>
-        </div>
-      {/if}
-
-      <div class="pt-4 border-t border-neutral-200 dark:border-neutral-800/80 flex items-center justify-between gap-4">
-        <div>
-          <p class="text-xs text-neutral-800 dark:text-neutral-300 font-medium">{t('settings.subscription.supportTitle')}</p>
-          <p class="text-[11px] text-neutral-500">{t('settings.subscription.supportBody')}</p>
-        </div>
-        <button
-          type="button"
-          onclick={() => openExternalUrl(pricingUrl(pro.status?.account?.id))}
-          class="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold rounded-lg transition-colors shrink-0"
-        >
-          <span>Creem Checkout</span>
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
-        </button>
+        {/if}
       </div>
+      {#if !$isPro && $licenseInfo.trialUsed}
+        <p class="text-[12px] {MUTED} -mt-2">{t('settings.license.trialUsed')}</p>
+      {/if}
+    {/if}
+
+    <!-- What Pro adds -->
+    <div class="{CARD} !p-0 overflow-hidden">
+      <div class="px-6 pt-5 pb-3">
+        <h3 class="text-[14px] font-semibold text-neutral-900 dark:text-white">{t('settings.license.compareTitle')}</h3>
+      </div>
+      <table class="cp-table">
+        <thead>
+          <tr>
+            <th class="!pl-6">{t('settings.license.feature')}</th>
+            <th class="w-36 text-center">{t('settings.license.free')}</th>
+            <th class="w-36 text-center !pr-6">{t('settings.license.pro')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {#each compareRows as row (row.label)}
+            <tr>
+              <td class="!pl-6 text-neutral-800 dark:text-neutral-200">{row.label}</td>
+              <td class="text-center {row.free === '—' ? 'text-neutral-400' : 'text-neutral-700 dark:text-neutral-300'}">{row.free}</td>
+              <td class="text-center !pr-6 font-medium text-brand-600 dark:text-brand-400">{row.pro}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
     </div>
   {:else if activeTab === 'security'}
     <div class="{CARD} space-y-4">
@@ -1130,52 +882,6 @@
             {/each}
           </div>
         {/each}
-      </div>
-    </div>
-  {/if}
-  {#if showProLogin}
-    <div class="fixed inset-0 z-[100] bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="relative bg-neutral-50 dark:bg-[#0a0a0a] border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-        <button
-          type="button"
-          onclick={() => (showProLogin = false)}
-          class="absolute top-3 right-3 p-1.5 rounded-lg text-neutral-400 hover:text-neutral-900 dark:hover:text-white hover:bg-neutral-200 dark:hover:bg-neutral-800 transition-colors"
-          aria-label={t('common.close')}
-        >
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-        </button>
-        <ProLoginForm onSignedIn={handleProSignedIn} />
-      </div>
-    </div>
-  {/if}
-
-  {#if deviceLimit}
-    <div class="fixed inset-0 z-[100] bg-black/40 dark:bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div class="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
-        <div>
-          <h3 class="text-base font-bold text-neutral-900 dark:text-white">{t('pro.devices.limitTitle')}</h3>
-          <p class="text-xs {MUTED} mt-1">{t('pro.devices.limitBody', { count: deviceLimit.limit })}</p>
-          {#if deviceLimit.limit < PRO_PRICING.syncDevices}
-            <p class="text-xs text-sky-700 dark:text-sky-300 mt-2">
-              {t('pro.devices.limitUpsell', { count: PRO_PRICING.syncDevices })}
-              <button type="button" onclick={() => openExternalUrl(pricingUrl(pro.status?.account?.id))} class="font-semibold underline">{t('pro.devices.seePlans')}</button>
-            </p>
-          {/if}
-        </div>
-        <ul class="divide-y divide-neutral-200 dark:divide-neutral-800 border border-neutral-200 dark:border-neutral-800 rounded-md">
-          {#each deviceLimit.devices as device (device.id)}
-            <li class="flex items-center justify-between gap-3 px-3 py-2 text-xs">
-              <div class="min-w-0">
-                <p class="font-medium text-neutral-900 dark:text-white truncate">{device.name}</p>
-                <p class="text-neutral-500 truncate">{device.os} · {t('pro.devices.lastSeen', { time: formatProTime(device.lastSeenAt) })}</p>
-              </div>
-              <button type="button" onclick={() => removeProDevice(device.id)} class="text-rose-600 dark:text-rose-400 hover:underline shrink-0">{t('pro.devices.remove')}</button>
-            </li>
-          {/each}
-        </ul>
-        <div class="flex justify-end">
-          <button type="button" onclick={() => (deviceLimit = null)} class={SMALL_BUTTON}>{t('common.close')}</button>
-        </div>
       </div>
     </div>
   {/if}

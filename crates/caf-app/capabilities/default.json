@@ -70,6 +70,7 @@
     "allow-billing-activate-license",
     "allow-billing-start-trial",
     "allow-billing-sign-out",
+    "allow-billing-license-info",
     "allow-open-external-url",
     "allow-save-text-file",
     "dialog:default",

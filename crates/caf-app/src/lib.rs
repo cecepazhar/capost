@@ -182,6 +182,7 @@ pub fn run_with_start(start: std::time::Instant) {
             commands::billing_activate_license,
             commands::billing_start_trial,
             commands::billing_sign_out,
+            commands::billing_license_info,
             commands::open_external_url,
             commands::save_text_file,
         ])

@@ -36,7 +36,17 @@
   import { proGate } from '$lib/stores/proGate.svelte';
   import ProGateModal from '$lib/components/ProGateModal.svelte';
 
-  let isCollapsed = $state(false);
+  // Sidebar starts collapsed (icon rail) so the workspace gets the width; the user's own
+  // choice is remembered once they toggle it.
+  const SIDEBAR_KEY = 'capost_sidebar_collapsed';
+  let isCollapsed = $state(readSidebarCollapsed());
+  function readSidebarCollapsed(): boolean {
+    try {
+      return localStorage.getItem(SIDEBAR_KEY) !== '0';
+    } catch {
+      return true;
+    }
+  }
   let isVaultUnlocked = $state(true); // Default open tanpa lockscreen per CA Group standard
   let mobileDrawerOpen = $state(false);
   let allMenusSheetOpen = $state(false);
@@ -102,6 +112,11 @@
 
   function toggleSidebar() {
     isCollapsed = !isCollapsed;
+    try {
+      localStorage.setItem(SIDEBAR_KEY, isCollapsed ? '1' : '0');
+    } catch {
+      // Storage blocked: the choice lasts for this session only.
+    }
   }
 
   function handleAiToggle() {

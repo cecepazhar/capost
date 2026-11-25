@@ -1,14 +1,23 @@
 <script lang="ts">
   import { proGate } from '$lib/stores/proGate.svelte';
-  import { billingStore } from '$lib/stores/billing.svelte';
+  import { billingStore, isPro, licenseInfo } from '$lib/stores/billing.svelte';
   import { showToast } from '$lib/stores/uiNotifications.svelte';
   import { invoke } from '@tauri-apps/api/core';
+  import { errorText } from '$lib/errors';
+  import LicenseActivation from './LicenseActivation.svelte';
 
   let activeTab = $state<'trial' | 'creem' | 'activate'>('trial');
-  let licenseKey = $state('');
-  let isActivating = $state(false);
   let isStartingTrial = $state(false);
   let errorMessage = $state<string | null>(null);
+
+  // The trial is once per device: once used, open straight on licence activation.
+  $effect(() => {
+    if ($proGate.isOpen && $licenseInfo.trialUsed && activeTab === 'trial') activeTab = 'activate';
+  });
+  // A licence activated from inside the modal unlocks the feature: close it.
+  $effect(() => {
+    if ($proGate.isOpen && $isPro) proGate.close();
+  });
 
   const CREEM_CHECKOUT_URL = 'https://creem.io/checkout/capost-pro';
 
@@ -20,7 +29,7 @@
       showToast('Trial 7 Hari CAPost PRO berhasil diaktifkan!', 'success');
       proGate.close();
     } catch (err: any) {
-      errorMessage = err?.message || 'Gagal memulai trial. Silakan coba lagi.';
+      errorMessage = errorText(err) || 'Gagal memulai trial. Silakan coba lagi.';
       showToast(errorMessage!, 'error');
     } finally {
       isStartingTrial = false;
@@ -34,27 +43,6 @@
       if (typeof window !== 'undefined') {
         window.open(CREEM_CHECKOUT_URL, '_blank');
       }
-    }
-  }
-
-  async function handleActivateLicense() {
-    const key = licenseKey.trim();
-    if (!key) {
-      errorMessage = 'Masukkan kunci lisensi Anda';
-      return;
-    }
-
-    isActivating = true;
-    errorMessage = null;
-    try {
-      await billingStore.activateLicense(key);
-      showToast('Lisensi CAPost PRO berhasil diaktifkan!', 'success');
-      proGate.close();
-    } catch (err: any) {
-      errorMessage = err?.message || 'Kunci lisensi tidak valid atau kadaluarsa';
-      showToast(errorMessage!, 'error');
-    } finally {
-      isActivating = false;
     }
   }
 
@@ -121,7 +109,7 @@
         </div>
         <div class="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
           <span class="text-emerald-500 font-bold">✓</span>
-          <span>Cloud Sync ZK</span>
+          <span>Ambient Lighting</span>
         </div>
         <div class="flex items-center gap-1.5 text-neutral-600 dark:text-neutral-300">
           <span class="text-emerald-500 font-bold">✓</span>
@@ -171,13 +159,13 @@
         {#if activeTab === 'trial'}
           <div class="space-y-4">
             <div class="text-xs text-neutral-600 dark:text-neutral-400 leading-relaxed">
-              Mulai uji coba gratis CAPost PRO selama <strong class="text-neutral-900 dark:text-white">7 hari penuh</strong> tanpa kartu kredit. Akses instan ke BYOK AI, Runner tanpa batas, dan Zero-Knowledge Cloud Sync.
+              Mulai uji coba gratis CAPost PRO selama <strong class="text-neutral-900 dark:text-white">7 hari penuh</strong> tanpa kartu kredit. Akses instan ke AI Copilot (API key sendiri), Runner tanpa batas, dan Ambient Lighting. Sekali per perangkat.
             </div>
 
             <button
               type="button"
               onclick={handleStartTrial}
-              disabled={isStartingTrial}
+              disabled={isStartingTrial || $licenseInfo.trialUsed}
               class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.99] transition-all shadow-md shadow-brand-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
             >
               {#if isStartingTrial}
@@ -211,34 +199,7 @@
             </p>
           </div>
         {:else}
-          <form onsubmit={(e) => { e.preventDefault(); handleActivateLicense(); }} class="space-y-4">
-            <div>
-              <label for="license-key-input" class="block text-xs font-semibold text-neutral-700 dark:text-neutral-300 mb-1.5">
-                Kunci Lisensi CAPost PRO
-              </label>
-              <input
-                id="license-key-input"
-                type="text"
-                bind:value={licenseKey}
-                placeholder="mis. CAPOST-PRO-XXXX-XXXX"
-                class="w-full px-3.5 py-2.5 bg-neutral-50 dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-xl text-xs font-mono text-neutral-900 dark:text-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-brand-500/30 uppercase tracking-wider"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isActivating || !licenseKey.trim()}
-              class="w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-white bg-brand-600 hover:bg-brand-500 active:scale-[0.99] transition-all shadow-md shadow-brand-600/20 disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
-            >
-              {#if isActivating}
-                <span class="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                <span>Memvalidasi Lisensi...</span>
-              {:else}
-                <span>★</span>
-                <span>Aktivasi Lisensi</span>
-              {/if}
-            </button>
-          </form>
+          <LicenseActivation />
         {/if}
       </div>
 

@@ -337,6 +337,11 @@ pub const COMMAND_POLICIES: &[CommandPolicy] = &[
         returns_list: false,
     },
     CommandPolicy {
+        name: "billing_license_info",
+        policy: Policy::Public,
+        returns_list: false,
+    },
+    CommandPolicy {
         name: "open_external_url",
         policy: Policy::Public,
         returns_list: false,

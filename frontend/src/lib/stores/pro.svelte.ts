@@ -10,11 +10,18 @@ import {
   type ProStatus,
   type SyncOutcome
 } from '$lib/api/pro';
+import { billingStore } from '$lib/stores/billing.svelte';
 
 /** How often an unlocked app re-syncs its licence (the server re-issues a 14-day token). */
 const SYNC_INTERVAL_MS = 6 * 60 * 60 * 1000;
 
 let status = $state<ProStatus | null>(null);
+
+// CAPost's own entitlement (offline licence key or 7-day trial) lives in the billing store.
+// Pro features read `getPro().isPro`, so it has to count that too — otherwise an activated
+// licence would never unlock them.
+let licensePro = $state(false);
+billingStore.subscribe((b) => (licensePro = b.isPro));
 let serverAvailable = $state<boolean | null>(null);
 let syncing = $state(false);
 let syncTimer: ReturnType<typeof setInterval> | null = null;
@@ -26,6 +33,7 @@ export function getPro() {
     },
     /** This account's own Pro plan or trial is valid on this device. */
     get isPro() {
+      if (licensePro) return true;
       const ent = status?.entitlement;
       return ent?.state === 'valid' && ent.features.includes('cloud_sync');
     },

@@ -431,6 +431,11 @@ pub async fn billing_sign_out() -> Result<(), CafError> {
     run_blocking(caf_core::billing::sign_out).await
 }
 
+#[tauri::command]
+pub async fn billing_license_info() -> Result<caf_core::billing::LicenseInfo, CafError> {
+    run_blocking(caf_core::billing::license_info).await
+}
+
 /// Shows a native "Save as" dialog and writes `contents` to the chosen file.
 /// Returns the saved path, or `None` when the user cancels. Writing happens here
 /// (not through the fs plugin) so any drive/folder the user picks works.

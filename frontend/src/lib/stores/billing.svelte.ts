@@ -17,6 +17,27 @@ export interface BillingPlan {
   currency: 'IDR' | 'USD';
 }
 
+export interface LicenseInfo {
+  /** The one-time 7-day trial has been started on this installation. */
+  trialUsed: boolean;
+  /** Activated key with the middle hidden, e.g. `CAPS99-••••••-3`. */
+  licenseKeyMasked: string | null;
+}
+
+/** Trial state, masked key: refreshed together with the entitlement. */
+export const licenseInfo = writable<LicenseInfo>({ trialUsed: false, licenseKeyMasked: null });
+
+async function refreshLicenseInfo(): Promise<void> {
+  try {
+    licenseInfo.set(await invoke<LicenseInfo>('billing_license_info'));
+  } catch {
+    // Browser preview / older backend: keep defaults.
+  }
+}
+
+/** Licence keys look like `CAPS99-A1B2C3-7` (product, tier, random part, check digit). */
+export const LICENSE_KEY_PATTERN = /^CA[A-Z]{2}\d{2}-[A-Z0-9]{6}-\d$/;
+
 function createBillingStore() {
   const { subscribe, set, update } = writable<EntitlementState>({
     tier: 'free',
@@ -35,6 +56,7 @@ function createBillingStore() {
       try {
         const state = await invoke<EntitlementState>('billing_get_effective_state');
         set(state);
+        void refreshLicenseInfo();
         return state;
       } catch (err) {
         try {
@@ -50,6 +72,7 @@ function createBillingStore() {
     async startTrial(): Promise<EntitlementState> {
       const state = await invoke<EntitlementState>('billing_start_trial');
       set(state);
+      void refreshLicenseInfo();
       return state;
     },
     async requestOtp(email: string): Promise<void> {
@@ -75,6 +98,7 @@ function createBillingStore() {
     },
     async signOut(): Promise<void> {
       await invoke('billing_sign_out');
+      void refreshLicenseInfo();
       set({
         tier: 'free',
         billingType: 'free',

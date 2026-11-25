@@ -2,8 +2,8 @@
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
 
-  // The request workbench is the home screen; render it full-bleed under /requests.
+  // The dashboard is the home screen; the request workbench is one click away in the sidebar.
   onMount(() => {
-    goto('/requests', { replaceState: true });
+    goto('/dashboard', { replaceState: true });
   });
 </script>

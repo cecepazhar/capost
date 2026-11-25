@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-billing-license-info"
+description = "Enables the billing_license_info command without any pre-configured scope."
+commands.allow = ["billing_license_info"]
+
+[[permission]]
+identifier = "deny-billing-license-info"
+description = "Denies the billing_license_info command without any pre-configured scope."
+commands.deny = ["billing_license_info"]

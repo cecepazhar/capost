@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   name: "CAPost",
   slug: "capost",
   bundleId: "com.fathforce.capost",
-  version: "1.0.7",
+  version: "1.0.8",
   accentColor: "indigo",
   errorPrefix: "CAPOST",
   description: "Zero-Knowledge AI-Native API Studio & Workbench for modern backend and QA engineers",

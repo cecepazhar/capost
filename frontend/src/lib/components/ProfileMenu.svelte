@@ -4,6 +4,7 @@
   import ProfileAvatar from './ProfileAvatar.svelte';
   import AboutModal from './AboutModal.svelte';
   import { getProfile } from '$lib/stores/profile.svelte';
+  import { isPro } from '$lib/stores/billing.svelte';
   import { getFeedbackPromptState } from '$lib/stores/feedbackStore.svelte';
 
   let {
@@ -36,7 +37,7 @@
     if (open && root && !root.contains(e.target as Node)) open = false;
   }
 
-  const planLabel = $derived(profile.plan === 'free' ? t('profileMenu.planFree') : t('profileMenu.planPro'));
+  const planLabel = $derived($isPro ? t('profileMenu.planPro') : t('profileMenu.planFree'));
 
   const itemBase = 'w-full flex items-center gap-3 px-3 py-2 text-left transition-colors';
   const itemClass = `${itemBase} text-neutral-700 dark:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800/60`;
@@ -63,7 +64,7 @@
         class="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors"
         title={t('profileMenu.editProfile')}
       >
-        <ProfileAvatar avatar={profile.avatar} name={profile.name} size={36} pro={profile.plan === 'pro'} />
+        <ProfileAvatar avatar={profile.avatar} name={profile.name} size={36} pro={$isPro} />
         <span class="min-w-0">
           <span class="block font-semibold text-neutral-900 dark:text-white truncate">{profile.name}</span>
           <span class="block text-xs text-neutral-500 dark:text-neutral-400">{planLabel}</span>
@@ -119,7 +120,7 @@
     class="w-full flex items-center rounded-xl border transition-colors {collapsed ? 'justify-center p-1.5 border-transparent' : 'gap-2.5 p-2 border-neutral-200 dark:border-neutral-800'} {open ? 'bg-neutral-100 dark:bg-neutral-800/70' : 'hover:bg-neutral-100 dark:hover:bg-neutral-900'}"
   >
     <span class="relative shrink-0">
-      <ProfileAvatar avatar={profile.avatar} name={profile.name} size={collapsed ? 30 : 34} pro={profile.plan === 'pro'} />
+      <ProfileAvatar avatar={profile.avatar} name={profile.name} size={collapsed ? 30 : 34} pro={$isPro} />
       <!-- Vault is unlocked whenever this menu is visible. -->
       <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#0e0e0e]"></span>
     </span>

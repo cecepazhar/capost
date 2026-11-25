@@ -176,6 +176,26 @@ pub fn clear_billing_state() -> Result<(), CafError> {
     Ok(())
 }
 
+/// Removes the licence key and Pro tokens but keeps the trial markers, so deactivating a
+/// licence never makes the one-time trial available again.
+pub fn clear_license_and_tokens() -> Result<(), CafError> {
+    let conn = db::open()?;
+    conn.execute(
+        "DELETE FROM app_kv WHERE key IN (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        [
+            KEY_DEVICE_TOKEN,
+            KEY_CACHED_TOKEN,
+            KEY_LAST_VERIFIED_AT,
+            KEY_MAX_SEEN_TIME,
+            KEY_LICENSE_KEY,
+            KEY_LICENSE_TIER,
+            KEY_LICENSE_BILLING_TYPE,
+        ],
+    )
+    .map_err(|e| CafError::Db(DbError::Generic(e.to_string())))?;
+    Ok(())
+}
+
 fn get_kv(key: &str) -> Result<Option<String>, CafError> {
     let conn = db::open()?;
     let mut stmt = conn
