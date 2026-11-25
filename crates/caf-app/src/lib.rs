@@ -45,7 +45,16 @@ pub fn run_with_start(start: std::time::Instant) {
         }));
         // Remembers size, position and maximized state between launches. The first launch
         // falls back to tauri.conf.json (maximized + centered).
-        builder = builder.plugin(tauri_plugin_window_state::Builder::default().build());
+        // VISIBLE is excluded: the window stays hidden until the boot splash has painted
+        // (see window.rs), instead of the plugin showing a blank WebView on restore.
+        builder = builder.plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        & !tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        );
     }
 
     builder

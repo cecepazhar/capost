@@ -30,7 +30,27 @@ pub fn create_main_window(app: &tauri::App) -> tauri::Result<WebviewWindow> {
         builder = builder.additional_browser_args(&format!("{base} {NO_GPU_ARGS}"));
     }
 
+    // The window starts hidden (tauri.conf.json `visible: false`) on the app's dark background
+    // and is shown once the page — whose first paint is the boot splash — has loaded, so the
+    // user never sees WebView2's blank white surface. A timer shows it anyway if the load
+    // event never arrives.
+    builder = builder.on_page_load(|webview, payload| {
+        if matches!(payload.event(), tauri::webview::PageLoadEvent::Finished) {
+            let _ = webview.show();
+            let _ = webview.set_focus();
+        }
+    });
+
     let window = builder.build()?;
+    {
+        let w = window.clone();
+        tauri::async_runtime::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(2500)).await;
+            if !w.is_visible().unwrap_or(true) {
+                let _ = w.show();
+            }
+        });
+    }
     memory::install(&window);
     disable_browser_accelerators(&window);
     Ok(window)

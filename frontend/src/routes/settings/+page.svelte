@@ -23,7 +23,7 @@
   import { proErrorMessage } from '$lib/pro/errors';
   import ProTeamPanel from '$lib/components/ProTeamPanel.svelte';
   import { SHORTCUT_GROUPS } from '$lib/shortcuts';
-  import PageHeader from '$lib/components/PageHeader.svelte';
+  import PageHead from '$lib/components/page/PageHead.svelte';
   import AmbientSettingsCard from '$lib/components/AmbientSettingsCard.svelte';
   import { isPro } from '$lib/stores/billing.svelte';
   import { proGate } from '$lib/stores/proGate.svelte';
@@ -407,27 +407,26 @@
   }
 </script>
 
-<div class="cp-page">
-  <PageHeader
-    icon={['M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', 'M15 12a3 3 0 11-6 0 3 3 0 016 0z']}
-    accent="cyan"
-    title={t('settings.title')}
-    subtitle={t('settings.subtitle')}
-  />
+<div class="cp-view">
+  <PageHead title={t('settings.title')} subtitle={t('settings.subtitle')} />
 
-  <!-- Settings Tabs -->
-  <div class="border-b border-neutral-200 dark:border-neutral-800 flex gap-4 overflow-x-auto" role="tablist">
+  <div class="cp-body">
+  <!-- Settings sections: vertical nav, full height (VS Code / Postman style) -->
+  <nav class="cp-side cp-pane w-56 p-2 space-y-0.5 overflow-y-auto" role="tablist" aria-orientation="vertical">
     {#each visibleTabs as tab (tab)}
       <button
         role="tab"
         aria-selected={activeTab === tab}
         onclick={() => (activeTab = tab)}
-        class="pb-3 whitespace-nowrap text-sm font-medium transition-colors border-b-2 {activeTab === tab ? 'border-sky-500 text-neutral-900 dark:text-white font-semibold' : 'border-transparent text-neutral-500 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-200'}"
+        class="cp-list-item {activeTab === tab ? 'is-active font-medium' : 'text-neutral-600 dark:text-neutral-400'}"
       >
         {t(`settings.tabs.${tab}`)}
       </button>
     {/each}
-  </div>
+  </nav>
+
+  <div class="cp-scroll">
+  <div class="w-full max-w-5xl px-8 py-6 space-y-6">
 
   {#if activeTab === 'profile'}
     <div class="{CARD} space-y-6">
@@ -1180,4 +1179,7 @@
       </div>
     </div>
   {/if}
+  </div>
+  </div>
+  </div>
 </div>

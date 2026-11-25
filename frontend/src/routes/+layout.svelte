@@ -16,6 +16,7 @@
   import { lockVault } from '$lib/api/vault';
   import { APP_VERSION, APP_NAME } from '$lib/appInfo';
   import { onMount } from 'svelte';
+  import { finishBoot } from '$lib/boot';
   import { invoke } from '@tauri-apps/api/core';
   import { t } from '$lib/i18n/index.svelte';
   import HeaderQuickControls from '$lib/components/HeaderQuickControls.svelte';
@@ -90,6 +91,7 @@
       .catch(() => {});
 
     checkForUpdates().catch(() => {});
+    void finishBoot();
   });
 
   async function handleLock() {
@@ -342,7 +344,7 @@
           </div>
           {:else}
           <!-- Pages own their gutter via `.cp-page` so every screen has the same 24px padding. -->
-          <div class="flex-1 min-w-0 overflow-auto wb-scroll text-neutral-900 dark:text-neutral-100 relative bg-neutral-50/60 dark:bg-[#141414]">
+          <div class="flex-1 min-w-0 overflow-auto wb-scroll text-neutral-900 dark:text-neutral-100 relative">
             {@render children()}
           </div>
           {/if}

@@ -10,16 +10,15 @@
   let { title, subtitle = '', actions, meta }: Props = $props();
 </script>
 
-<header class="cp-page-head">
-  <div class="min-w-0">
-    <h1 class="cp-title">{title}</h1>
-    {#if subtitle || meta}
-      <p class="cp-subtitle">
-        {subtitle}{#if meta}{@render meta()}{/if}
-      </p>
-    {/if}
-  </div>
+<!-- Workbench-style toolbar: one 48px strip, title + hint on the left, actions on the right. -->
+<header class="cp-toolbar">
+  <h1 class="text-[13.5px] font-semibold text-neutral-900 dark:text-white shrink-0">{title}</h1>
+  {#if subtitle || meta}
+    <p class="hidden lg:block min-w-0 truncate text-[12px] text-neutral-500 dark:text-neutral-400">
+      {subtitle}{#if meta}{@render meta()}{/if}
+    </p>
+  {/if}
   {#if actions}
-    <div class="flex items-center gap-2 shrink-0">{@render actions()}</div>
+    <div class="ml-auto flex items-center gap-1.5 shrink-0">{@render actions()}</div>
   {/if}
 </header>
