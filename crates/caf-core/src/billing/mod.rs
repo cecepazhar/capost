@@ -7,6 +7,13 @@ pub mod token;
 use crate::error::CafError;
 use state::{EffectiveState, EffectiveTier};
 
+/// Product code inside a CAPost key: `CAPS99-XXXXXX-C`.
+const LICENSE_PRODUCT: &str = "PS";
+
+fn is_capost_key(key: &str) -> bool {
+    key.trim().to_uppercase().strip_prefix("CA").is_some_and(|rest| rest.starts_with(LICENSE_PRODUCT))
+}
+
 /// Fetch the current effective billing state (License, Trial, GCC Token, or Free).
 pub fn get_effective_state() -> Result<EffectiveState, CafError> {
     let now_unix = std::time::SystemTime::now()
@@ -15,8 +22,9 @@ pub fn get_effective_state() -> Result<EffectiveState, CafError> {
         .as_secs();
 
     // 1. Check if a license key is activated
-    if let Some((_key, tier, billing_type)) = store::get_license_info()? {
-        if tier == "pro" {
+    //    A key of another product stored by an older version no longer counts.
+    if let Some((key, tier, billing_type)) = store::get_license_info()? {
+        if tier == "pro" && is_capost_key(&key) {
             return Ok(EffectiveState {
                 tier: EffectiveTier::Pro,
                 billing_type,
@@ -121,8 +129,8 @@ pub fn activate_license(license_key: &str) -> Result<EffectiveState, CafError> {
     if !prefix_tier.starts_with("CA") { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
     let product = &prefix_tier[2..4];
     let tier = &prefix_tier[4..6];
-    let allowed = ["TM","MK","CD","SH","TB","PS","UI","AA","CF","CB"];
-    if !allowed.contains(&product) { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
+    // Only CAPost keys: licences of other CA products must not unlock CAPost.
+    if product != LICENSE_PRODUCT { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
     if tier.parse::<u8>().is_err() { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
     if !rand_part.chars().all(|c| c.is_ascii_alphanumeric()) { return Err(CafError::Validation(crate::error::ValidationError::InvalidFormat)); }
     // Compute checksum (mod‑10)
@@ -237,6 +245,13 @@ mod tests {
         assert!(state.is_pro);
         assert_eq!(state.billing_type, "yearly");
         assert_eq!(license_info().unwrap().license_key_masked.as_deref(), Some("CAPS01-••••••-5"));
+
+        // A well-formed key of another product (valid check digit) is refused.
+        assert!(activate_license("CATM99-R64108-3").is_err());
+
+        // ...and one already stored by an older version stops counting.
+        store::save_license_info("CATM99-R64108-3", "pro", "lifetime").unwrap();
+        assert!(!get_effective_state().unwrap().is_pro);
 
         // Tier 99 is lifetime.
         let state = activate_license("CAPS99-A1B2C3-8").unwrap();

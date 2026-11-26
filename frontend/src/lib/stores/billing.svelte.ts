@@ -35,8 +35,8 @@ async function refreshLicenseInfo(): Promise<void> {
   }
 }
 
-/** Licence keys look like `CAPS99-A1B2C3-7` (product, tier, random part, check digit). */
-export const LICENSE_KEY_PATTERN = /^CA[A-Z]{2}\d{2}-[A-Z0-9]{6}-\d$/;
+/** CAPost licence keys look like `CAPS99-A1B2C3-7` (PS = CAPost, tier, random part, check digit). */
+export const LICENSE_KEY_PATTERN = /^CAPS\d{2}-[A-Z0-9]{6}-\d$/;
 
 function createBillingStore() {
   const { subscribe, set, update } = writable<EntitlementState>({

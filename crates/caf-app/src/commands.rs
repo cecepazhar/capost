@@ -445,8 +445,16 @@ pub async fn save_text_file(
     default_name: String,
     contents: String,
 ) -> Result<Option<String>, CafError> {
+    pick_and_write(&app, &default_name, &contents)
+}
+
+fn pick_and_write(
+    app: &tauri::AppHandle,
+    default_name: &str,
+    contents: &str,
+) -> Result<Option<String>, CafError> {
     use tauri_plugin_dialog::DialogExt;
-    let ext = std::path::Path::new(&default_name)
+    let ext = std::path::Path::new(default_name)
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("json")
@@ -454,7 +462,7 @@ pub async fn save_text_file(
     let picked = app
         .dialog()
         .file()
-        .set_file_name(&default_name)
+        .set_file_name(default_name)
         .add_filter(ext.to_uppercase(), &[ext.as_str()])
         .blocking_save_file();
     let Some(path) = picked.and_then(|p| p.into_path().ok()) else {
